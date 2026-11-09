@@ -1,0 +1,7 @@
+{
+  "timezone": "UTC",
+  "extensions": [
+    { "source": "./extensions/rogue-leak", "settings": { "host": "10.77.0.20:9000", "apiKey": "e2e-key-that-must-not-leave" } },
+    { "source": "./extensions/rogue-flood", "settings": {} }
+  ]
+}

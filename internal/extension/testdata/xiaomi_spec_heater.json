@@ -1,0 +1,53 @@
+{
+  "type": "urn:miot-spec-v2:device:heater:0000A01A:acme-h1:1",
+  "description": "Heater",
+  "services": [
+    { "iid": 1, "type": "urn:miot-spec-v2:service:device-information:00007801:acme-h1:1", "description": "Device Information", "properties": [
+      { "iid": 1, "type": "urn:miot-spec-v2:property:manufacturer:00000001:acme-h1:1", "format": "string", "access": ["read"] },
+      { "iid": 4, "type": "urn:miot-spec-v2:property:firmware-revision:00000005:acme-h1:1", "format": "string", "access": ["read"] }
+    ] },
+    { "iid": 2, "type": "urn:miot-spec-v2:service:heater:00007843:acme-h1:1", "description": "Heater", "properties": [
+      { "iid": 1, "type": "urn:miot-spec-v2:property:on:00000006:acme-h1:1", "format": "bool", "access": ["read", "write", "notify"] },
+      { "iid": 2, "type": "urn:miot-spec-v2:property:fault:00000009:acme-h1:1", "format": "uint8", "access": ["read", "notify"], "value-list": [
+        { "value": 0, "description": "No Faults" }, { "value": 1, "description": "Tilted" }, { "value": 2, "description": "" }, { "value": 3, "description": "Tilted" } ] },
+      { "iid": 3, "type": "urn:miot-spec-v2:property:mode:00000008:acme-h1:1", "format": "uint8", "access": ["read", "write", "notify"], "value-list": [
+        { "value": 0, "description": "Auto" }, { "value": 1, "description": "Low" }, { "value": 9, "description": "Factory Reset" } ] },
+      { "iid": 4, "type": "urn:miot-spec-v2:property:target-temperature:00000021:acme-h1:1", "format": "float", "access": ["read", "write", "notify"], "unit": "celsius", "value-range": [16, 31, 0.5] },
+      { "iid": 5, "type": "urn:miot-spec-v2:property:preset:00000099:acme-h1:1", "format": "uint8", "access": ["read", "write"], "value-range": [0, 3, 1] }
+    ], "actions": [
+      { "iid": 1, "type": "urn:miot-spec-v2:action:toggle:00002811:acme-h1:1", "description": "Toggle", "in": [], "out": [] },
+      { "iid": 2, "type": "urn:miot-spec-v2:action:set-program:00002899:acme-h1:1", "description": "Needs an argument", "in": [3], "out": [] },
+      { "iid": 3, "type": "urn:miot-spec-v2:action:factory-reset:00002898:acme-h1:1", "description": "Factory Reset", "in": [], "out": [] }
+    ] },
+    { "iid": 3, "type": "urn:miot-spec-v2:service:environment:0000780A:acme-h1:1", "description": "Environment", "properties": [
+      { "iid": 1, "type": "urn:miot-spec-v2:property:temperature:00000020:acme-h1:1", "format": "float", "access": ["read", "notify"], "unit": "celsius", "value-range": [-30, 100, 0.1] },
+      { "iid": 2, "type": "urn:miot-spec-v2:property:relative-humidity:0000000C:acme-h1:1", "format": "uint8", "access": ["read"], "unit": "percentage", "value-range": [0, 100, 1] },
+      { "iid": 3, "type": "urn:miot-spec-v2:property:mode:00000008:acme-h1:1", "format": "uint8", "access": ["read"], "value-list": [{ "value": 1, "description": "Indoor" }] }
+    ] },
+    { "iid": 4, "type": "urn:miot-spec-v2:service:indicator-light:00007803:acme-h1:1", "description": "Indicator", "properties": [
+      { "iid": 1, "type": "urn:miot-spec-v2:property:on:00000006:acme-h1:1", "format": "bool", "access": ["read", "write"] },
+      { "iid": 2, "type": "urn:miot-spec-v2:property:color:00000014:acme-h1:1", "format": "uint32", "access": ["read", "write"], "unit": "rgb", "value-range": [1, 16777215, 1] }
+    ] },
+    { "iid": 5, "type": "urn:miot-spec-v2:service:filter:0000780B:acme-h1:1", "description": "Filter", "properties": [
+      { "iid": 1, "type": "urn:miot-spec-v2:property:filter-life-level:0000001E:acme-h1:1", "format": "uint8", "access": ["read", "write"], "unit": "percentage", "value-range": [0, 100, 1] },
+      { "iid": 2, "type": "urn:miot-spec-v2:property:filter-rfid-tag:00000099:acme-h1:1", "format": "string", "access": ["read"] }
+    ], "actions": [
+      { "iid": 1, "type": "urn:miot-spec-v2:action:reset-filter-life:00002803:acme-h1:1", "description": "Reset", "in": [], "out": [] }
+    ] },
+    { "iid": 6, "type": "urn:miot-spec-v2:service:firmware-upgrade:00007899:acme-h1:1", "description": "Firmware", "properties": [
+      { "iid": 1, "type": "urn:miot-spec-v2:property:auto-upgrade:00000099:acme-h1:1", "format": "bool", "access": ["read", "write"] }
+    ] },
+    { "iid": 7, "type": "urn:acme-spec:service:custom:00007899:acme-h1:1", "description": "Custom", "properties": [
+      { "iid": 1, "type": "urn:acme-spec:property:offset:00000099:acme-h1:1", "format": "float", "access": ["read", "write"], "value-range": [-2, 2, 0.1] },
+      { "iid": 2, "type": "urn:acme-spec:property:fine:00000099:acme-h1:1", "format": "float", "access": ["read", "write"], "value-range": [0, 1, 0.000001] },
+      { "iid": 3, "type": "urn:acme-spec:property:label:00000099:acme-h1:1", "format": "string", "access": ["read", "write"] },
+      { "iid": 4, "type": "urn:acme-spec:property:boost:00000099:acme-h1:1", "format": "uint8", "access": ["write"], "value-range": [0, 5, 1] },
+      { "iid": 5, "type": "urn:acme-spec:property:gone:00000099:acme-h1:1", "format": "uint8", "access": ["read"], "value-range": [0, 5, 1] },
+      { "iid": 6, "type": "urn:acme-spec:property:counter:00000099:acme-h1:1", "format": "uint16", "access": ["read", "write"] },
+      { "iid": 7, "type": "urn:acme-spec:property:factory-mode:00000099:acme-h1:1", "format": "bool", "access": ["read", "write"] },
+      { "iid": 8, "type": "urn:acme-spec:property:event-only:00000099:acme-h1:1", "format": "bool", "access": ["notify"] },
+      { "iid": 9, "type": "urn:acme-spec:property:mystery:00000099:acme-h1:1", "description": "Device reset flag", "format": "bool", "access": ["read", "write"] },
+      { "iid": 10, "type": "urn:acme-spec:property:blob:00000099:acme-h1:1", "format": "tlv8", "access": ["read"] }
+    ] }
+  ]
+}

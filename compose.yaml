@@ -1,0 +1,55 @@
+services:
+  home-control:
+    # A released image, like ghcr.io/drax98/tomtly:1.0, if HOME_CONTROL_IMAGE names one; otherwise built from this folder.
+    image: ${HOME_CONTROL_IMAGE:-home-control:local}
+    build: .
+    restart: unless-stopped
+    # The service isn't root, and an extension you approve may listen on a low port, like syslog on 514.
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # POSTGRES_PASSWORD goes into a URL as it is, so it must be URL-safe: letters and digits, like `openssl rand -hex 24`.
+      HOST_IPS: ${HOST_IPS:-} # this machine's LAN address if BIND_ADDRESS isn't localhost, so extensions can't reach the service through it
+      DATABASE_URL: postgres://home_control:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env, for example with openssl rand -hex 24}@postgres:5432/home_control
+      # The marketplace is a separate service, shared by every home. Left blank, the Marketplace page says it isn't set up.
+      MARKETPLACE_URL: ${MARKETPLACE_URL:-}
+      MARKETPLACE_PUBLIC_KEY: ${MARKETPLACE_PUBLIC_KEY:-}
+      MARKETPLACE_APPROVAL_PUBLIC_KEYS: ${MARKETPLACE_APPROVAL_PUBLIC_KEYS:-}
+      # The reverse proxy in front of it, so sign-in limits and the audit log see real addresses.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+    # Localhost by default. See README before setting BIND_ADDRESS: it needs HTTPS in front of it.
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8099}:8099"
+    # Everything about your home: config.json, automations/ and secrets/. Kept outside the repo.
+    # Only automations/ is writable, for the script editor. The service's own state is in Postgres, and /data is only a cache.
+    # Values for ${VARS} in config.json, like an extension's API key. Optional.
+    env_file:
+      - path: ${HOME_CONTROL_DIR:-${HOME}/.config/home-control}/secrets/env
+        required: false
+    volumes:
+      - ${HOME_CONTROL_DIR:-${HOME}/.config/home-control}:/config:ro
+      - ${HOME_CONTROL_DIR:-${HOME}/.config/home-control}/automations:/config/automations
+      - data:/data
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    # No ports: only home-control, on the compose network, can reach it.
+    environment:
+      POSTGRES_USER: home_control
+      POSTGRES_DB: home_control
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env, for example with openssl rand -hex 24}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U home_control -d home_control"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  data:
+  postgres:

@@ -1,0 +1,16 @@
+{
+  "timezone": "Europe/Warsaw",
+  "allowedHosts": [],
+  "extensions": [
+    { "source": "./extensions/tuya", "settings": { "devices": "secrets/tuya.json", "hosts": "<gateway id>=192.168.1.10@3.4,<wifi device id>=192.168.1.11@3.5" } },
+    { "source": "./extensions/xiaomi", "settings": { "devices": "secrets/xiaomi.json" } },
+    { "source": "./extensions/gree", "settings": { "host": "192.168.1.12", "name": "Living room AC", "mac": "aabbccddeeff" } },
+    { "source": "./extensions/service-bridge", "settings": { "host": "192.168.1.20:9000", "token": "${BRIDGE_TOKEN}" } },
+    { "source": "./extensions/http-json", "settings": { "host": "192.168.1.21:9000", "path": "/today" } },
+    { "source": "./extensions/weather", "settings": { "latitude": 52.23, "longitude": 21.01 } },
+    { "source": "github:someone/home-control-hue@v1.0.0", "settings": { "host": "192.168.1.13", "apiKey": "${HUE_API_KEY}" } }
+  ],
+  "rooms": {
+    "Living room": ["tuya:<thermostat id>", "tuya:<window sensor id>", "gree:aabbccddeeff"]
+  }
+}

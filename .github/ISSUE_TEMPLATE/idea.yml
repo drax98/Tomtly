@@ -1,0 +1,15 @@
+name: An idea
+description: Something Home Control should do
+labels: [idea]
+body:
+  - type: textarea
+    id: moment
+    attributes:
+      label: When do you miss it?
+      description: The moment at home where this would have helped.
+    validations:
+      required: true
+  - type: textarea
+    id: shape
+    attributes:
+      label: What would it look like?

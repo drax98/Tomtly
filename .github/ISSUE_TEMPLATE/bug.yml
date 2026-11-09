@@ -1,0 +1,32 @@
+name: Something doesn't work
+description: A bug in Home Control, the marketplace or a bundled extension
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Leave out device keys, tokens, passwords and addresses. A security problem goes through SECURITY.md, not here."
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what happened, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The relevant lines from `docker compose logs home-control`, with secrets removed.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The image tag or commit you run.
+    validations:
+      required: true
+  - type: input
+    id: devices
+    attributes:
+      label: Devices involved
+      description: Brand and model, if it's about a device.

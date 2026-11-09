@@ -1,0 +1,11 @@
+{
+  "timezone": "UTC",
+  "extensions": [
+    { "source": "./extensions/fake-home", "settings": { "host": "10.77.0.20:9000" } },
+    { "source": "./extensions/memory-bomb", "settings": {} }
+  ],
+  "rooms": {
+    "Living room": ["fake-home:lamp", "fake-home:thermostat", "fake-home:vacuum"],
+    "Bedroom": ["fake-home:blinds"]
+  }
+}

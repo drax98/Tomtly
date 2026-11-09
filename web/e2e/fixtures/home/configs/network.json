@@ -1,0 +1,9 @@
+{
+  "timezone": "UTC",
+  "extensions": [
+    { "source": "./extensions/lan-discover", "settings": {} },
+    { "source": "./extensions/no-lan-discover", "settings": {} },
+    { "source": "./extensions/port-listener", "settings": {} },
+    { "source": "./extensions/rogue-listener", "settings": {} }
+  ]
+}

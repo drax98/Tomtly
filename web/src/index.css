@@ -1,0 +1,148 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/figtree";
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+/* Warm paper and lamp light by day, a dim brown-black room at night. One accent (bronze, gold in the dark);
+   heat, cool, good, warn and offline are the only other hues, each dark enough as text on its own tint. */
+:root {
+  color-scheme: light dark;
+  --radius: 0.75rem;
+  --background: oklch(0.972 0.008 85);
+  --foreground: oklch(0.24 0.02 60);
+  --card: oklch(0.99 0.005 85);
+  --card-foreground: oklch(0.24 0.02 60);
+  --popover: oklch(0.995 0.004 85);
+  --popover-foreground: oklch(0.24 0.02 60);
+  --primary: oklch(0.45 0.085 55);
+  --primary-foreground: oklch(0.985 0.006 85);
+  --secondary: oklch(0.94 0.012 82);
+  --secondary-foreground: oklch(0.3 0.02 60);
+  --muted: oklch(0.94 0.012 82);
+  --muted-foreground: oklch(0.47 0.02 65);
+  --accent: oklch(0.93 0.018 80);
+  --accent-foreground: oklch(0.28 0.025 60);
+  --destructive: oklch(0.5 0.19 27);
+  --destructive-foreground: oklch(0.985 0.006 85);
+  --border: oklch(0.89 0.012 80);
+  --input: oklch(0.84 0.014 80);
+  --ring: oklch(0.55 0.1 60);
+  --heat: oklch(0.5 0.16 40);
+  --cool: oklch(0.48 0.11 245);
+  --good: oklch(0.45 0.1 155);
+  --warn: oklch(0.47 0.1 75);
+  --offline: oklch(0.5 0.015 70);
+  --sidebar: oklch(0.953 0.011 82);
+  --sidebar-foreground: oklch(0.3 0.02 60);
+  --sidebar-primary: oklch(0.45 0.085 55);
+  --sidebar-primary-foreground: oklch(0.985 0.006 85);
+  --sidebar-accent: oklch(0.915 0.02 80);
+  --sidebar-accent-foreground: oklch(0.25 0.025 60);
+  --sidebar-border: oklch(0.89 0.012 80);
+  --sidebar-ring: oklch(0.55 0.1 60);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.185 0.012 60);
+    --foreground: oklch(0.94 0.01 85);
+    --card: oklch(0.225 0.014 60);
+    --card-foreground: oklch(0.94 0.01 85);
+    --popover: oklch(0.25 0.015 60);
+    --popover-foreground: oklch(0.94 0.01 85);
+    --primary: oklch(0.8 0.11 78);
+    --primary-foreground: oklch(0.2 0.02 60);
+    --secondary: oklch(0.28 0.015 60);
+    --secondary-foreground: oklch(0.94 0.01 85);
+    --muted: oklch(0.28 0.015 60);
+    --muted-foreground: oklch(0.73 0.015 80);
+    --accent: oklch(0.31 0.02 62);
+    --accent-foreground: oklch(0.96 0.01 85);
+    --destructive: oklch(0.74 0.16 25);
+    --destructive-foreground: oklch(0.2 0.02 60);
+    --border: oklch(0.96 0.02 80 / 11%);
+    --input: oklch(0.96 0.02 80 / 18%);
+    --ring: oklch(0.8 0.11 78 / 70%);
+    --heat: oklch(0.78 0.14 50);
+    --cool: oklch(0.79 0.1 235);
+    --good: oklch(0.79 0.13 155);
+    --warn: oklch(0.83 0.12 88);
+    --offline: oklch(0.68 0.015 75);
+    --sidebar: oklch(0.155 0.012 60);
+    --sidebar-foreground: oklch(0.9 0.01 85);
+    --sidebar-primary: oklch(0.8 0.11 78);
+    --sidebar-primary-foreground: oklch(0.2 0.02 60);
+    --sidebar-accent: oklch(0.26 0.018 62);
+    --sidebar-accent-foreground: oklch(0.96 0.01 85);
+    --sidebar-border: oklch(0.96 0.02 80 / 9%);
+    --sidebar-ring: oklch(0.8 0.11 78 / 70%);
+  }
+}
+
+@theme inline {
+  --font-sans: "Figtree Variable", ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-heat: var(--heat);
+  --color-cool: var(--cool);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-offline: var(--offline);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  /* Readings and page titles get their own steps instead of ad-hoc sizes. */
+  --text-reading: 3rem;
+  --text-reading--line-height: 1;
+  --text-reading--letter-spacing: -0.03em;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.2;
+  --text-title--letter-spacing: -0.02em;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/60;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

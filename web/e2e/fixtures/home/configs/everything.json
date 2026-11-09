@@ -1,0 +1,12 @@
+{
+  "timezone": "UTC",
+  "extensions": [
+    { "source": "./extensions/fake-home", "settings": { "host": "10.77.0.20:9000" } },
+    { "source": "./extensions/fake-data", "settings": { "station": "Gdansk" } },
+    { "source": "./extensions/rogue-leak", "settings": { "host": "10.77.0.20:9000", "apiKey": "e2e-key-that-must-not-leave" } }
+  ],
+  "rooms": {
+    "Living room": ["fake-home:lamp", "fake-home:thermostat", "fake-home:vacuum"],
+    "Bedroom": ["fake-home:blinds"]
+  }
+}
