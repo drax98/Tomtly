@@ -53,7 +53,7 @@ jobs:
         working-directory: ${{ matrix.app }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: ${{ matrix.app }}/package.json
       - uses: actions/setup-node@v4
@@ -90,7 +90,7 @@ jobs:
       - uses: securego/gosec@v2.30.0
         with:
           args: -exclude=G104,G304 -exclude-dir=extensions -exclude-dir=examples -exclude-dir=tools -exclude-dir=fixtures ./...
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: web/package.json
       - name: Known vulnerabilities in the web apps' dependencies
@@ -145,7 +145,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: web/package.json
       - uses: actions/setup-node@v4
