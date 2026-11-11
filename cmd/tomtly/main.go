@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -171,7 +172,7 @@ func run() error {
 // It needs a shell on the machine and DATABASE_URL, which the container already has. It sets a new random password for
 // the existing user, makes them an enabled admin, ends all their sessions, deletes their API tokens, and prints the password once to stdout.
 // A running service still holds its in-memory login back-off, which lasts at most 15 minutes.
-func resetAdmin(username string) error {
+func resetAdmin(username string, stdout, stderr io.Writer) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	st, err := openStore(ctx, os.Getenv("DATABASE_URL"))
@@ -201,8 +202,8 @@ func resetAdmin(username string) error {
 	if err := st.AppendAudit(ctx, store.AuditEntry{Time: time.Now(), User: user.Username, Action: "admin.reset", Detail: "from the command line"}); err != nil {
 		slog.Warn("audit write failed", "err", err)
 	}
-	fmt.Fprintf(os.Stderr, "New password for %s (shown once, change it after logging in):\n", user.Username)
-	fmt.Println(password)
+	fmt.Fprintf(stderr, "New password for %s (shown once, change it after logging in):\n", user.Username)
+	fmt.Fprintln(stdout, password)
 	return nil
 }
 
@@ -224,28 +225,39 @@ func healthcheck() error {
 	return nil
 }
 
-func main() {
-	if len(os.Args) == 2 && os.Args[1] == "healthcheck" {
+// cli runs the subcommands and says whether to start the service instead (no arguments).
+func cli(args []string, stdout, stderr io.Writer) (code int, serve bool) {
+	if len(args) == 1 && args[0] == "healthcheck" {
 		if err := healthcheck(); err != nil {
-			fmt.Fprintln(os.Stderr, "healthcheck:", err)
-			os.Exit(1)
+			fmt.Fprintln(stderr, "healthcheck:", err)
+			return 1, false
 		}
-		return
+		return 0, false
 	}
-	if len(os.Args) > 1 {
-		if len(os.Args) != 3 || os.Args[1] != "reset-admin" {
-			fmt.Fprintln(os.Stderr, "usage: tomtly [reset-admin <username> | healthcheck]")
-			os.Exit(2)
+	if len(args) > 0 {
+		if len(args) != 2 || args[0] != "reset-admin" {
+			fmt.Fprintln(stderr, "usage: tomtly [reset-admin <username> | healthcheck]")
+			return 2, false
 		}
-		if err := resetAdmin(os.Args[2]); err != nil {
-			fmt.Fprintln(os.Stderr, "reset-admin:", err)
-			os.Exit(1)
+		if err := resetAdmin(args[1], stdout, stderr); err != nil {
+			fmt.Fprintln(stderr, "reset-admin:", err)
+			return 1, false
 		}
-		return
+		return 0, false
 	}
-	if err := run(); err != nil {
-		slog.Error("fatal", "err", err)
-		os.Exit(1)
+	return 0, true
+}
+
+func main() {
+	code, serve := cli(os.Args[1:], os.Stdout, os.Stderr)
+	if serve {
+		if err := run(); err != nil {
+			slog.Error("fatal", "err", err)
+			code = 1
+		}
+	}
+	if code != 0 {
+		os.Exit(code)
 	}
 }
 

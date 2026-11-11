@@ -3,9 +3,9 @@
   "allowedHosts": [],
   "extensions": [
     { "source": "github:drax98/tomtly-extensions/tuya@tuya-v1.2.2", "settings": { "devices": "secrets/tuya.json", "hosts": "<gateway id>=192.168.1.10@3.4,<wifi device id>=192.168.1.11@3.5" } },
-    { "source": "github:drax98/tomtly-extensions/xiaomi@xiaomi-v1.3.2", "settings": { "devices": "secrets/xiaomi.json" } },
+    { "source": "github:drax98/tomtly-extensions/xiaomi@xiaomi-v1.3.3", "settings": { "devices": "secrets/xiaomi.json" } },
     { "source": "github:drax98/tomtly-extensions/gree@gree-v1.3.0", "settings": { "host": "192.168.1.12", "name": "Living room AC", "mac": "aabbccddeeff" } },
-    { "source": "github:drax98/tomtly-extensions/weather@weather-v1.1.0", "settings": { "latitude": 52.23, "longitude": 21.01 } }
+    { "source": "github:drax98/tomtly-extensions/weather@weather-v1.1.1", "settings": { "latitude": 52.23, "longitude": 21.01 } }
   ],
   "rooms": {
     "Living room": ["tuya:<thermostat id>", "tuya:<window sensor id>", "gree:aabbccddeeff"]

@@ -86,7 +86,7 @@ Extensions add devices, data or actions without changing this repo. The integrat
 
 ```json
 "extensions": [
-  { "source": "github:drax98/tomtly-extensions/weather@weather-v1.1.0", "settings": { "latitude": 52.23, "longitude": 21.01 } },
+  { "source": "github:drax98/tomtly-extensions/weather@weather-v1.1.1", "settings": { "latitude": 52.23, "longitude": 21.01 } },
   { "source": "./extensions/my-own", "settings": {} }
 ]
 ```
