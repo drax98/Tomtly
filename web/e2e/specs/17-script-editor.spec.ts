@@ -45,6 +45,19 @@ test("Ctrl+S saves the safe way", async ({ page }) => {
   expect(scriptFile("lights")).toContain("// saved with the keyboard");
 });
 
+// The build keeps only Monaco's TypeScript support (vite.config.ts), so this is what proves that support is still there.
+test("the editor still speaks TypeScript: colours, suggestions and errors", async ({ page }) => {
+  await openLights(page);
+  const tokenKinds = await editorText(page).locator("span[class^='mtk']").evaluateAll((spans) => new Set(spans.map((s) => s.className)).size);
+  expect(tokenKinds).toBeGreaterThan(2);
+  await appendToEditor(page, "\n");
+  await page.keyboard.type("home.");
+  await expect(page.locator(".suggest-widget")).toContainText("device");
+  await page.keyboard.press("Escape");
+  await page.keyboard.type("nothingLikeThis();");
+  await expect(page.locator(".monaco-editor .squiggly-error").first()).toBeVisible();
+});
+
 test("leaving with unsaved changes asks first", async ({ page }) => {
   await openLights(page);
   await appendToEditor(page, "\n// never saved\n");
