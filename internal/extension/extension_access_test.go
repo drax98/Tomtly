@@ -36,7 +36,7 @@ func TestNothingRunsUntilApproved(t *testing.T) {
 	defer cancel()
 	m := newManager(t.TempDir(), t.TempDir(), shared, hub(t))
 	t.Cleanup(func() { stopAll(m) })
-	m.add(ctx, entry{Source: dir}, false)
+	m.add(ctx, entry{Source: dir})
 	eventually(t, "it to wait", func() bool { return status(m).NeedsApproval })
 	time.Sleep(50 * time.Millisecond)
 	s := status(m)
@@ -69,7 +69,7 @@ func TestNothingRunsUntilApproved(t *testing.T) {
 	defer cancel2()
 	again := newManager(t.TempDir(), t.TempDir(), shared, hub(t))
 	t.Cleanup(func() { stopAll(again) })
-	again.add(ctx2, entry{Source: dir}, false)
+	again.add(ctx2, entry{Source: dir})
 	eventually(t, "it to wait again", func() bool { return status(again).NeedsApproval })
 	if d, _, _ := again.plugins.Get("a"); d != nil {
 		t.Fatal("the new version ran")
@@ -367,16 +367,6 @@ func TestAClashSaysWhatIsInTheWay(t *testing.T) {
 	_, err := addSeen(m, context.Background(), "./extensions/other", nil)
 	if err == nil || !strings.Contains(err.Error(), "Mine is already installed, from ./extensions/copy. Remove it first") {
 		t.Errorf("got %v", err)
-	}
-	if err := m.Remove("./extensions/copy"); err != nil {
-		t.Fatal(err)
-	}
-
-	listed := m.add(m.ctx, entry{Source: "./extensions/copy"}, false)
-	eventually(t, "it to run", func() bool { return listed.currentStatus().Running })
-	_, err = addSeen(m, context.Background(), "./extensions/other", nil)
-	if err == nil || !strings.Contains(err.Error(), "in config.json") {
-		t.Errorf("one from config.json should say so: %v", err)
 	}
 }
 

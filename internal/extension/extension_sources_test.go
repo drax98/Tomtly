@@ -15,7 +15,6 @@ import (
 	"testing"
 	"time"
 	"tomtly/internal/store"
-	"tomtly/plugin"
 )
 
 func TestInstallsFromGitHub(t *testing.T) {
@@ -45,7 +44,7 @@ func TestInstallsFromGitHub(t *testing.T) {
 	again := newManager(t.TempDir(), t.TempDir(), m.store, hub(t))
 	t.Cleanup(func() { stopAll(again) })
 	again.archives = github.URL
-	again.add(ctx, entry{Source: "github:acme/repo/sub/dir@v1.2.0"}, false)
+	again.add(ctx, entry{Source: "github:acme/repo/sub/dir@v1.2.0"})
 	eventually(t, "data from the copy", func() bool { d, _, _ := again.plugins.Get("remote"); return string(d) == `"hello"` })
 }
 
@@ -118,9 +117,6 @@ func TestAddFromThePageSurvivesARestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	eventually(t, "data", func() bool { d, _, _ := m.plugins.Get("mine"); return string(d) == `{"on":true}` })
-	if !status(m).Removable {
-		t.Error("it should be removable")
-	}
 	data, _ := json.Marshal(m.Statuses())
 	if strings.Contains(string(data), "the-secret") {
 		t.Errorf("the status shows a secret: %s", data)
@@ -155,60 +151,6 @@ func TestPageCantAskForAnyFolder(t *testing.T) {
 		if _, err := m.Inspect(context.Background(), source); err == nil {
 			t.Errorf("%s must be refused", source)
 		}
-	}
-}
-
-func TestRemovingOneFromConfigLastsUntilItIsAddedBack(t *testing.T) {
-	needApproval(t)
-	ctx := context.Background()
-	m := pageManager(t)
-	source := "./extensions/mine"
-	write(t, m.configDir, "extensions/mine/"+entryFile, `defineExtension({id:"mine",name:"Mine",version:"1",access:{storage:true},devices:{poll(){return []}}});`)
-	e := entry{Source: source}
-	m.configured = []entry{e}
-	inst := m.add(m.ctx, e, false)
-	eventually(t, "it to load", func() bool { return inst.currentStatus().ID == "mine" })
-	if err := m.store.SetGrants(ctx, "mine", []string{"storage"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := m.Remove(source); err != nil {
-		t.Fatal(err)
-	}
-	if len(m.Statuses()) != 0 {
-		t.Fatalf("still listed: %+v", m.Statuses())
-	}
-	if grants, _ := m.store.Grants(ctx, "mine"); len(grants) != 0 {
-		t.Errorf("its approval outlived it: %v", grants)
-	}
-	removed, err := m.RemovedExtensions(ctx)
-	if err != nil || len(removed) != 1 || removed[0].Kind != "integration" || removed[0].Name != "Mine" {
-		t.Fatalf("offered back: %+v %v", removed, err)
-	}
-
-	// A restart reads the same file and must not bring it back.
-	raw, _ := json.Marshal(e)
-	again, err := Start(ctx, []json.RawMessage{raw}, m.configDir, t.TempDir(), m.store, plugin.NewHub())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(again.Statuses()) != 0 {
-		t.Fatalf("back after a restart: %+v", again.Statuses())
-	}
-	if err := m.RestoreExtension(ctx, "./extensions/other"); err == nil {
-		t.Error("restored something config.json doesn't list")
-	}
-	if err := m.RestoreExtension(ctx, source); err != nil {
-		t.Fatal(err)
-	}
-	if err := m.RestoreExtension(ctx, source); err == nil {
-		t.Error("restored it twice")
-	}
-	eventually(t, "it to wait for approval", func() bool {
-		s := m.Statuses()
-		return len(s) == 1 && s[0].ID == "mine" && s[0].NeedsApproval
-	})
-	if removed, _ := m.RemovedExtensions(ctx); len(removed) != 0 {
-		t.Errorf("still offered: %+v", removed)
 	}
 }
 
@@ -353,7 +295,7 @@ func TestStorageSurvivesARestart(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		m := newManager(t.TempDir(), t.TempDir(), data, hub(t))
 		t.Cleanup(func() { stopAll(m) })
-		inst := m.add(ctx, entry{Source: dir}, false)
+		inst := m.add(ctx, entry{Source: dir})
 		eventually(t, "run "+fmt.Sprint(want), func() bool { d, _, _ := m.plugins.Get("a"); return string(d) == wantData })
 		cancel()
 		<-inst.done

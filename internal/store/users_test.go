@@ -281,7 +281,7 @@ func TestUpdateUserCanDropTheirTokens(t *testing.T) {
 		if url == "" {
 			t.Skip("TEST_DATABASE_URL is not set")
 		}
-		p, err := Open(context.Background(), url)
+		p, err := Open(context.Background(), url, testKey)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -318,7 +318,7 @@ func TestMarketStateIsKept(t *testing.T) {
 		if url == "" {
 			t.Skip("TEST_DATABASE_URL is not set")
 		}
-		p, err := Open(context.Background(), url)
+		p, err := Open(context.Background(), url, testKey)
 		if err != nil {
 			t.Fatal(err)
 		}

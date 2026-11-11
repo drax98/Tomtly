@@ -278,10 +278,6 @@ func (fakeExtensions) Add(context.Context, string, map[string]any, []string) (ex
 	return extension.Status{}, nil
 }
 func (fakeExtensions) Remove(string) error { return nil }
-func (fakeExtensions) RemovedExtensions(context.Context) ([]store.RemovedExtension, error) {
-	return []store.RemovedExtension{}, nil
-}
-func (fakeExtensions) RestoreExtension(context.Context, string) error { return nil }
 func (fakeExtensions) Upload(context.Context, string, []byte) (extension.Status, error) {
 	return extension.Status{}, nil
 }

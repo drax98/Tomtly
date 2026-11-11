@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/dop251/goja"
 	"log/slog"
-	"slices"
 	"strings"
 	"time"
 	"tomtly/internal/store"
@@ -27,12 +26,11 @@ func (m *Manager) loadAdded(ctx context.Context) {
 		return
 	}
 	for _, e := range entries {
-		m.add(ctx, entry{Source: e.Source, Settings: e.Settings}, true)
+		m.add(ctx, entry{Source: e.Source, Settings: e.Settings})
 	}
 }
 
-// checkPageSource limits what the page can ask for, which is less than config.json may: any folder on this machine
-// could be read as an extension otherwise.
+// checkPageSource limits what the page can ask for: any folder on this machine could be read as an extension otherwise.
 func checkPageSource(source string) error {
 	if strings.HasPrefix(source, "upload:") {
 		if !uploadSource.MatchString(source) {
@@ -151,37 +149,19 @@ func (m *Manager) Add(ctx context.Context, source string, settings map[string]an
 			return Status{}, fmt.Errorf("could not make its webhook address: %w", err)
 		}
 	}
-	m.addLocked(m.ctx, entry{Source: source, Settings: settings}, true)
+	m.addLocked(m.ctx, entry{Source: source, Settings: settings})
 	status := definedStatus(source, l, settings)
 	status.Webhook = webhook
 	return status, nil
 }
 
-// Remove stops an extension and forgets its approvals and saved data. One added on the page goes with its settings. One
-// in config.json is only remembered as removed, since that file is the owner's, and RestoreExtension brings it back.
+// Remove stops an extension and forgets its settings, approvals and saved data.
 func (m *Manager) Remove(source string) error {
 	m.mu.Lock()
 	var removed *instance
 	for i, inst := range m.instances {
 		if inst.entry.Source != source {
 			continue
-		}
-		if !inst.removable {
-			s := inst.currentStatus()
-			kind, name := "plugin", s.Name
-			if slices.Contains(s.Provides, "devices") {
-				kind = "integration"
-			}
-			if name == "" {
-				name = source
-			}
-			saving, cancel := context.WithTimeout(context.Background(), storeTimeout)
-			err := m.store.AddRemovedExtension(saving, store.RemovedExtension{Source: source, ID: s.ID, Name: name, Kind: kind})
-			cancel()
-			if err != nil { // saved first: otherwise a restart would bring it back
-				m.mu.Unlock()
-				return fmt.Errorf("could not save that: %w", err)
-			}
 		}
 		removed = inst
 		m.instances = append(m.instances[:i:i], m.instances[i+1:]...)
@@ -195,50 +175,14 @@ func (m *Manager) Remove(source string) error {
 	removed.stop()
 	ctx, cancel := context.WithTimeout(context.Background(), storeTimeout)
 	defer cancel()
-	var err error
-	if removed.removable {
-		err = m.store.DeleteAddedExtension(ctx, source)
-	}
+	err := m.store.DeleteAddedExtension(ctx, source)
 	if id, _ := removed.identity(); id != "" {
 		m.hookHashes.Delete(id)
 		err = errors.Join(err, m.store.DeleteExtensionStorage(ctx, id), m.store.DeleteWebhookToken(ctx, id), m.store.DeleteActivity(ctx, id), m.store.SetGrants(ctx, id, nil)) // tokens and approvals shouldn't outlive the extension
 	}
 	// shortcut: removed devices stay recorded, so installing it again keeps the owner's choice; add a cleanup if that surprises anyone.
-	if removed.removable {
-		err = errors.Join(err, m.dropUnused(source))
-	}
+	err = errors.Join(err, m.dropUnused(source))
 	return err
-}
-
-// RemovedExtensions lists what the owner took out of config.json's list and can add back. One no longer in the file is gone.
-func (m *Manager) RemovedExtensions(ctx context.Context) ([]store.RemovedExtension, error) {
-	all, err := m.store.RemovedExtensions(ctx)
-	if err != nil {
-		return nil, err
-	}
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return slices.DeleteFunc(all, func(r store.RemovedExtension) bool {
-		return !slices.ContainsFunc(m.configured, func(e entry) bool { return e.Source == r.Source })
-	}), nil
-}
-
-// RestoreExtension starts one from config.json again. Its approvals went when it was removed, so it waits for the owner.
-func (m *Manager) RestoreExtension(ctx context.Context, source string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	at := slices.IndexFunc(m.configured, func(e entry) bool { return e.Source == source })
-	if at < 0 {
-		return errors.New("that isn't listed in config.json any more")
-	}
-	if slices.ContainsFunc(m.instances, func(inst *instance) bool { return inst.entry.Source == source }) {
-		return errors.New("that is already running")
-	}
-	if err := m.store.DeleteRemovedExtension(ctx, source); err != nil {
-		return fmt.Errorf("could not save that: %w", err)
-	}
-	m.addLocked(m.ctx, m.configured[at], false)
-	return nil
 }
 
 func (i *instance) stop() {

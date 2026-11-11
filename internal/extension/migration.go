@@ -120,7 +120,7 @@ func PlanUpgrade(from, to string, migrations []Migration, declared []SettingStat
 			continue
 		}
 		s.Set, s.Value = has, nil
-		if has && s.Type != "secret" {
+		if has && !hiddenType(s.Type) {
 			s.Value = settings[s.Key]
 		}
 		plan.Ask = append(plan.Ask, s)
@@ -169,15 +169,12 @@ func migrationsBetween(migrations []Migration, from, to string) []Migration {
 	return out
 }
 
-// installedAs finds the extension added on the page that a version from source would replace.
-//
-// shortcut: a config.json extension is left out, since its settings are read-only on the page and its card already names
-// a missing setting; include it if config.json settings ever become editable there.
+// installedAs finds the extension that a version from source would replace.
 func (m *Manager) installedAs(id, source string) *instance {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	for _, inst := range m.instances {
-		if got, _ := inst.identity(); got == id && inst.removable && inst.entry.Source != source {
+		if got, _ := inst.identity(); got == id && inst.entry.Source != source {
 			return inst
 		}
 	}
@@ -198,10 +195,10 @@ func planFor(inst *instance, l *loaded, dir string) (Upgrade, map[string]any, er
 	again := false
 	for _, s := range running.Settings {
 		secret, isText := saved[s.Key].(string)
-		if s.Type != "secret" || !isText {
+		if !hiddenType(s.Type) || !isText {
 			continue
 		}
-		if slices.ContainsFunc(declared, func(d SettingStatus) bool { return d.Type != "secret" && carried[d.Key] == secret }) {
+		if slices.ContainsFunc(declared, func(d SettingStatus) bool { return !hiddenType(d.Type) && carried[d.Key] == secret }) {
 			delete(saved, s.Key)
 			again = true
 		}

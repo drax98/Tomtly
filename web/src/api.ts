@@ -69,14 +69,17 @@ export interface PluginStatus {
 export interface ExtensionSetting {
   key: string;
   label: string;
-  type: "string" | "number" | "boolean" | "secret";
+  type: "string" | "number" | "boolean" | "secret" | "file";
   required: boolean;
   help?: string;
   default?: string | number | boolean;
   set: boolean;
-  /** What a setting that isn't a secret is set to. Never present for a secret. */
+  /** What a setting that isn't a secret or a file is set to. Never present for those. */
   value?: string | number | boolean;
 }
+
+/** A secret or a file's contents: never shown again once given, and kept when left empty. */
+export const hiddenSetting = (s: Pick<ExtensionSetting, "type">) => s.type === "secret" || s.type === "file";
 
 export interface IntegrationDevice {
   id: string;
@@ -108,12 +111,6 @@ export interface Discovery {
   supported: boolean;
   error?: string;
   devices: FoundDevice[];
-}
-
-export interface RemovedExtension {
-  source: string;
-  name: string;
-  kind: "integration" | "plugin";
 }
 
 export interface ExtensionActivity {
@@ -160,7 +157,6 @@ export interface ExtensionStatus {
   settings: ExtensionSetting[];
   provides: string[];
   running: boolean;
-  removable: boolean;
   error?: string;
   /** The path of a webhook address that was just made. It comes back once, in the answer to the call that made it. */
   webhook?: string;
@@ -381,8 +377,6 @@ export const api = {
   updateExtensionSettings: (source: string, settings: Record<string, unknown>) => request<ExtensionStatus>("/api/extensions/settings", { source, settings }),
   replaceExtension: (source: string, newSource: string, settings: Record<string, unknown> | undefined, access: string[]) => request<ExtensionStatus>("/api/extensions/replace", { source, newSource, settings, access }),
   newWebhookAddress: (source: string) => request<{ webhook: string }>("/api/extensions/webhook-token", { source }),
-  removedExtensions: () => request<RemovedExtension[]>("/api/extensions/removed"),
-  restoreExtension: (source: string) => request<unknown>("/api/extensions/restore", { source }),
   removeExtension: (source: string) => request<unknown>(`/api/extensions?source=${encodeURIComponent(source)}`, undefined, "DELETE"),
   setLive: (name: string, live: boolean) =>
     request<AutomationStatus>(`/api/automations/${encodeURIComponent(name)}/live`, { live }),

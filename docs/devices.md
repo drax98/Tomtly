@@ -58,6 +58,6 @@ extension. `rooms` in `config.json` and `home.device("...")` use the full id.
 
 ## Getting people's devices in
 
-How credentials get obtained is up to each extension. The existing ones read a file you put in your config folder's
-`secrets/`, written by a vendor-specific tool, through a `file` setting (see [Settings](extension-api.md#settings)).
+How credentials get obtained is up to each extension. Tuya and Xiaomi take the file a vendor-specific tool writes, chosen
+on the page through a `file` setting (see [Settings](extension-api.md#settings)), and keep it encrypted in the database.
 Document your steps in your extension's README, and read secrets from a `file` or `secret` setting, never from the repo.

@@ -32,6 +32,8 @@ const (
 	maxReviewBody = 32 << 10
 	maxScript     = 256 << 10
 	maxExtension  = 64 << 10
+	// maxSettings fits a file setting, which may be 1 MiB, once JSON has escaped its quotes and line breaks.
+	maxSettings = 3 << 20
 )
 
 // Automations is what the server needs from the engine.
@@ -56,8 +58,6 @@ type Extensions interface {
 	Inspect(ctx context.Context, source string) (extension.Status, error)
 	Add(ctx context.Context, source string, settings map[string]any, seen []string) (extension.Status, error)
 	Remove(source string) error
-	RemovedExtensions(ctx context.Context) ([]store.RemovedExtension, error)
-	RestoreExtension(ctx context.Context, source string) error
 	Upload(ctx context.Context, filename string, data []byte) (extension.Status, error)
 	// Approve returns the path of a webhook address it made, which is shown once.
 	Approve(source string, seen []string) (webhook string, err error)

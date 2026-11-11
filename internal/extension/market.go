@@ -348,7 +348,7 @@ func (m *Manager) listingOf(e MarketEntry, installed map[string]Status) MarketLi
 			l.DifferentCopy = true
 		} else {
 			l.Installed, l.InstalledVersion, l.InstalledSource = true, have.Version, have.Source
-			l.UpdateAvailable = have.Removable && l.Suspended == "" && newerVersion(e.Version, have.Version)
+			l.UpdateAvailable = l.Suspended == "" && newerVersion(e.Version, have.Version)
 			if l.UpdateAvailable {
 				l.UpgradeSteps = migrationsBetween(e.Migrations, have.Version, e.Version)
 			}

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AddExtension } from "@/components/AddExtension";
-import { ExtensionDetails, ExtensionState, RemovedExtensions } from "@/components/ExtensionParts";
+import { ExtensionDetails, ExtensionState } from "@/components/ExtensionParts";
 import { EmptyState, PageHeader } from "@/components/PageHeader";
 import { useAuth } from "@/lib/auth";
 import { usePoll } from "@/lib/useDevices";
@@ -89,7 +89,6 @@ export function PluginsPage() {
           <PluginCard key={plugin.id} plugin={plugin} onChanged={() => void refresh()} />
         ))}
       </div>
-      <RemovedExtensions kind="plugin" onRestored={() => void refresh()} />
       {!can("extensions.manage") && <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">Adding or removing plugins needs an administrator.</p>}
     </>
   );

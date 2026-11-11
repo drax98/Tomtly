@@ -1,8 +1,12 @@
+import { useState } from "react";
 import type { ExtensionSetting } from "@/api";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 
-/** One setting as a form field. keep marks a secret that is already set: left blank, it stays as it is. */
+/** A file setting is sent as the file's text, at most 1 MiB, and kept by the service like a key. */
+const MAX_FILE = 1 << 20;
+
+/** One setting as a form field. keep marks a secret or file that is already set: left empty, it stays as it is. */
 export function SettingField({ setting, value, onChange, keep }: { setting: ExtensionSetting; value: unknown; onChange: (value: unknown) => void; keep?: boolean }) {
   const id = `setting-${setting.key}`;
   const label = `${setting.label}${setting.required ? "" : " (optional)"}`;
@@ -13,6 +17,11 @@ export function SettingField({ setting, value, onChange, keep }: { setting: Exte
           <Switch id={id} aria-label={setting.label} checked={value === true} onCheckedChange={onChange} />
           <label htmlFor={id} className="text-sm">{label}</label>
         </div>
+      ) : setting.type === "file" ? (
+        <>
+          <label htmlFor={id} className="text-sm">{label}</label>
+          <FileText id={id} required={setting.required && !keep} keep={keep} onChange={onChange} />
+        </>
       ) : (
         <>
           <label htmlFor={id} className="text-sm">{label}</label>
@@ -30,5 +39,25 @@ export function SettingField({ setting, value, onChange, keep }: { setting: Exte
       )}
       {setting.help && <p className="text-xs text-muted-foreground">{setting.help}</p>}
     </div>
+  );
+}
+
+/** Reads the chosen file as text in the browser. Only its name is shown; what it holds goes straight to the service. */
+function FileText({ id, required, keep, onChange }: { id: string; required: boolean; keep?: boolean; onChange: (value: unknown) => void }) {
+  const [note, setNote] = useState<string | null>(keep ? "Set. Choose a file only to replace it." : null);
+  const choose = async (file: File | undefined) => {
+    if (!file) return onChange(undefined);
+    if (file.size > MAX_FILE) {
+      setNote(`${file.name} is over 1 MiB.`);
+      return onChange(undefined);
+    }
+    setNote(`${file.name} is read and will be kept encrypted.`);
+    onChange(await file.text());
+  };
+  return (
+    <>
+      <Input id={id} type="file" required={required} className="text-xs" onChange={(e) => void choose(e.target.files?.[0])} />
+      {note && <p className="text-xs text-muted-foreground" role="status">{note}</p>}
+    </>
   );
 }

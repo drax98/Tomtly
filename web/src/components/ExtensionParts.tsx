@@ -1,7 +1,7 @@
-import { useCallback, useRef, useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { ArrowUpCircle, Ban, ChevronDown, CircleAlert, CircleCheck, CirclePause, KeyRound, Pencil, ShieldCheck, Trash2, TriangleAlert, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { api, type ExtensionStatus, type RemovedExtension } from "@/api";
+import { api, type ExtensionStatus } from "@/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import { EditSettings, GithubVersion, WebhookAddress } from "@/components/Extens
 import { UpdateDialog } from "@/components/UpdateDialog";
 import { useAuth } from "@/lib/auth";
 import { navigate } from "@/lib/route";
-import { usePoll } from "@/lib/useDevices";
 import { cn, messageOf } from "@/lib/utils";
 
 /** An uploaded package's source is a hash, which means nothing to a person. */
@@ -75,47 +74,6 @@ export function Warnings({ warnings, title = "Check this before you go on", open
   );
 }
 
-/** What was taken out of config.json's list, ready to add back on the page it belongs to. */
-export function RemovedExtensions({ kind, onRestored }: { kind: RemovedExtension["kind"]; onRestored: () => void }) {
-  const { can } = useAuth();
-  const manage = can("extensions.manage");
-  const [removed, setRemoved] = useState<RemovedExtension[]>([]);
-  const refresh = useCallback(async () => {
-    if (!manage) return;
-    try {
-      setRemoved(await api.removedExtensions());
-    } catch {
-      // The header already says when the service is unreachable.
-    }
-  }, [manage]);
-  usePoll(refresh);
-  const here = removed.filter((r) => r.kind === kind);
-  if (here.length === 0) return null;
-  const restore = async (source: string) => {
-    try {
-      await api.restoreExtension(source);
-      toast.success("Added back. If it needs your approval, its card asks.");
-      await refresh();
-      onRestored();
-    } catch (e) {
-      toast.error("Couldn't add it back", { description: messageOf(e, "Try again.") });
-    }
-  };
-  return (
-    <section className="space-y-2">
-      <h2 className="text-sm font-medium">Removed</h2>
-      <ul className="space-y-2">
-        {here.map((r) => (
-          <li key={r.source} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm">
-            <span className="min-w-0 break-words">{r.name}</span>
-            <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9" onClick={() => void restore(r.source)}>Add back</Button>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 /** One glance: is this running, waiting for you, or broken. */
 export function ExtensionState({ extension }: { extension?: ExtensionStatus }) {
   if (!extension) return <Badge variant="secondary">Built in</Badge>;
@@ -152,7 +110,6 @@ export function ExtensionDetails({ extension, onRemoved, onApproved, onChanged }
   const [fromMarket, setFromMarket] = useState(false); // the candidate is the marketplace's newer version, not an upload
   const picker = useRef<HTMLInputElement>(null);
   const listing = marketListing(extension.source);
-  const changeable = extension.removable && manage; // added on this page; the ones in config.json are changed in the file
   const refresh = () => (onChanged ?? onApproved)?.();
   const fail = (title: string) => (e: unknown) => toast.error(title, { description: messageOf(e, "Try again.") });
 
@@ -182,9 +139,7 @@ export function ExtensionDetails({ extension, onRemoved, onApproved, onChanged }
   const remove = async () => {
     const ok = await confirm({
       title: `Remove ${extension.name ?? extension.source}?`,
-      body: extension.removable
-        ? <p>It stops running and its saved settings (such as keys) are deleted. Automations that use it will stop working until you add it again.</p>
-        : <p>It stops running, its devices and data disappear, and its approval is taken back. Automations that use it will stop working. You can add it back from this page. Its settings stay in config.json, so delete any keys from there if you won't use it again.</p>,
+      body: <p>It stops running and its saved settings (such as keys) are deleted. Automations that use it will stop working until you add it again.</p>,
       action: "Remove",
       danger: true,
     });
@@ -298,7 +253,7 @@ export function ExtensionDetails({ extension, onRemoved, onApproved, onChanged }
           <AlertTitle>Version {extension.marketUpdate.version} is available</AlertTitle>
           <AlertDescription className="space-y-2">
             <UpgradeNotes steps={extension.marketUpdate.steps} />
-            {changeable && (
+            {manage && (
               <Button size="sm" className="min-h-11 sm:min-h-9" disabled={busy} onClick={() => void marketUpdate()}>
                 {busy ? "Checking…" : `Update to ${extension.marketUpdate.version}`}
               </Button>
@@ -385,7 +340,7 @@ export function ExtensionDetails({ extension, onRemoved, onApproved, onChanged }
         </p>
       )}
 
-      {changeable && (
+      {manage && (
         <div className="flex flex-wrap gap-2">
           {extension.settings.length > 0 && (
             <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9" onClick={() => setEditing(true)}>

@@ -15,11 +15,11 @@ const hue: Integration = {
 };
 const empty: Integration = { type: "smartlife", name: "Smart Life", devices: [] };
 const addedExtension: ExtensionStatus = {
-  source: "github:a/hue@v1", id: "hue", name: "Hue bridge", access: [], provides: ["devices"], running: true, removable: false, settings: [],
+  source: "github:a/hue@v1", id: "hue", name: "Hue bridge", access: [], provides: ["devices"], running: true, settings: [],
 };
 
 function serve(list: Integration[], extra: Routes = {}) {
-  return mockService({ "GET /api/integrations": () => ({ body: list }), "GET /api/extensions/removed": () => ({ body: [] }), ...extra });
+  return mockService({ "GET /api/integrations": () => ({ body: list }), ...extra });
 }
 const show = (role: "viewer" | "admin" = "admin", go = vi.fn()) => render(<WithRole role={role}><IntegrationsPage go={go} /></WithRole>);
 
@@ -40,7 +40,7 @@ describe("IntegrationsPage list", () => {
     serve([]);
     show();
     expect(await screen.findByText("No integrations yet")).toBeTruthy();
-    expect(screen.getByText(/list one under extensions in your config.json/)).toBeTruthy();
+    expect(screen.getByText(/Add one with the button at the top of this page/)).toBeTruthy();
   });
 
   it("lets an administrator add one, and tells a viewer only an administrator can", async () => {
@@ -80,16 +80,5 @@ describe("IntegrationsPage open", () => {
     show();
     expect(await screen.findByText("Built in")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Open" }) as HTMLButtonElement).disabled).toBe(true);
-  });
-});
-
-describe("IntegrationsPage removed add-ons", () => {
-  it("offers to add back a removed integration", async () => {
-    serve([], {
-      "GET /api/extensions/removed": () => ({ body: [{ source: "github:a/tuya@v1", name: "Tuya", kind: "integration" }] }),
-    });
-    show();
-    expect(await screen.findByText("Tuya")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Add back" })).toBeTruthy();
   });
 });

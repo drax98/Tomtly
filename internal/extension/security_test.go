@@ -32,15 +32,6 @@ func credentialsFile() string {
 	return string(data)
 }
 
-func withFile(text string) func(*Manager) {
-	return func(m *Manager) {
-		os.MkdirAll(filepath.Join(m.configDir, "secrets"), 0o755)
-		os.WriteFile(filepath.Join(m.configDir, "secrets/d.json"), []byte(text), 0o600)
-	}
-}
-
-var fileGiven = map[string]any{"devices": "secrets/d.json"}
-
 func TestAFileCantLeaveThroughOutput(t *testing.T) {
 	f := `ctx.settings.devices`
 	for name, body := range map[string]string{
@@ -55,7 +46,7 @@ func TestAFileCantLeaveThroughOutput(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			// No secretFields: a hostile author leaves them out, and this has to hold anyway.
-			m := run(t, folder(t, strings.Replace(fileExtension(body), `secretFields:["key"]`, "", 1)), fileGiven, withFile(credentialsFile()))
+			m := run(t, folder(t, strings.Replace(fileExtension(body), `secretFields:["key"]`, "", 1)), map[string]any{"devices": credentialsFile()})
 			failsWith(t, m, "secret settings")
 			if d, _, _ := m.plugins.Get("a"); d != nil {
 				t.Fatalf("published %.200s", d)
@@ -63,11 +54,11 @@ func TestAFileCantLeaveThroughOutput(t *testing.T) {
 		})
 	}
 	t.Run("a declared field", func(t *testing.T) {
-		failsWith(t, run(t, folder(t, fileExtension(`return JSON.parse(`+f+`).map(d => d.key)`)), fileGiven, withFile(credentialsFile())), "secret settings")
+		failsWith(t, run(t, folder(t, fileExtension(`return JSON.parse(`+f+`).map(d => d.key)`)), map[string]any{"devices": credentialsFile()}), "secret settings")
 	})
 	t.Run("as a device's name", func(t *testing.T) {
 		m := run(t, folder(t, `defineExtension({id:"a",name:"a",version:"1",settings:{devices:{label:"D",type:"file",required:true}},
-			devices:{poll(c){return [{id:"d",name:c.settings.devices,values:[]}]}}});`), fileGiven, withFile(credentialsFile()))
+			devices:{poll(c){return [{id:"d",name:c.settings.devices,values:[]}]}}});`), map[string]any{"devices": credentialsFile()})
 		failsWith(t, m, "secret settings")
 		if len(m.Devices()) != 0 {
 			t.Fatal("published a device")
@@ -77,7 +68,7 @@ func TestAFileCantLeaveThroughOutput(t *testing.T) {
 
 // What an extension legitimately takes from its file has to keep working, and what it says about undeclared fields has to be true.
 func TestAFileStillGivesUpWhatItsDevicesPublish(t *testing.T) {
-	m := run(t, folder(t, fileExtension(`return JSON.parse(ctx.settings.devices).map(d => ({id:d.id,name:d.name,sn:d.sn}))`)), fileGiven, withFile(credentialsFile()))
+	m := run(t, folder(t, fileExtension(`return JSON.parse(ctx.settings.devices).map(d => ({id:d.id,name:d.name,sn:d.sn}))`)), map[string]any{"devices": credentialsFile()})
 	eventually(t, "the data", func() bool { d, _, _ := m.plugins.Get("a"); return strings.Contains(string(d), "Lamp 11") })
 }
 
@@ -97,7 +88,7 @@ func TestAFileCantLeaveInARequest(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			hits.Store(0)
-			m := run(t, folder(t, source(body)), map[string]any{"host": address, "devices": "secrets/d.json"}, allowLoopback, withFile(credentialsFile()))
+			m := run(t, folder(t, source(body)), map[string]any{"host": address, "devices": credentialsFile()}, allowLoopback)
 			expectViolation(t, m, "secret")
 			if hits.Load() != 0 {
 				t.Fatal("it reached the host")
@@ -126,7 +117,7 @@ func TestEscapedSecretsStayOutOfLogsAndErrors(t *testing.T) {
 		}}});`
 	logged := capturedLog(t)
 	file := credentialsFile()
-	m := run(t, folder(t, source), map[string]any{"key": tricky, "devices": "secrets/d.json"}, withFile(file))
+	m := run(t, folder(t, source), map[string]any{"key": tricky, "devices": file})
 	eventually(t, "the error", func() bool { return status(m).Error != "" })
 	stopAll(m)
 	escaped, _ := json.Marshal(tricky)
@@ -151,7 +142,7 @@ func TestAWebhookCantAnswerWithAFile(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			m := run(t, folder(t, `defineExtension({id:"hook",name:"Hook",version:"1",access:{webhooks:true},settings:{devices:{label:"D",type:"file",required:true}},
-				webhooks:{receive(c){return {body:`+body+`}}}});`), fileGiven, withFile(credentialsFile()))
+				webhooks:{receive(c){return {body:`+body+`}}}});`), map[string]any{"devices": credentialsFile()})
 			eventually(t, "it to run", func() bool { return status(m).Running })
 			path, err := m.NewWebhookToken(context.Background(), status(m).Source)
 			if err != nil {

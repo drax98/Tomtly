@@ -17,7 +17,7 @@ const tides = entry({});
 const catalog = (over: Partial<Marketplace> = {}): Marketplace => ({ configured: true, reachable: true, verified: true, entries: [tides, hue, weather], ...over });
 
 const found: ExtensionStatus = {
-  source: "market:tides@1.0.0#" + "a".repeat(64), id: "tides", name: "Tides", version: "1.0.0", access: ["Internet: tides.example.com"], provides: ["data"], running: false, removable: false,
+  source: "market:tides@1.0.0#" + "a".repeat(64), id: "tides", name: "Tides", version: "1.0.0", access: ["Internet: tides.example.com"], provides: ["data"], running: false,
   settings: [{ key: "city", label: "City", type: "string", required: true, set: false }],
 };
 

@@ -18,44 +18,46 @@ One local service for every smart device at home. It talks to devices directly o
 Each release publishes images for amd64 and arm64 to `ghcr.io/drax98/tomtly` (see [self-hosting](docs/self-hosting.md)). To build from source instead:
 
 ```bash
-mkdir -p ~/.config/tomtly/secrets
+mkdir -p ~/.config/tomtly
 cp -R examples/config.json examples/automations ~/.config/tomtly/
-# edit config.json, and put your credentials files in secrets/ (see each integration's README)
 cp .env.example .env
 echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env
+echo "TOMTLY_SECRET_KEY=$(openssl rand -hex 32)" >> .env
 docker compose up -d --build
 open http://localhost:8099
 ```
 
-The first visit asks you to create the admin account.
+The first visit asks you to create the admin account. Then add your integrations on the **Integrations** page: their
+keys and credential files are entered there and kept in the database, encrypted with `TOMTLY_SECRET_KEY`, never in a file.
 
 To run without Docker, you'll need your own Postgres. Build the page with `pnpm install && pnpm build` in `web/`, then:
 
 ```bash
-DATABASE_URL=postgres://user:password@localhost:5432/tomtly CONFIG_DIR=~/.config/tomtly go run ./cmd/tomtly
+DATABASE_URL=postgres://user:password@localhost:5432/tomtly TOMTLY_SECRET_KEY=<your key> CONFIG_DIR=~/.config/tomtly go run ./cmd/tomtly
 ```
+
+`<your key>` is 64 hex characters you make once with `openssl rand -hex 32` and keep: a new one can't read what the old one saved.
 
 ## Your config folder
 
 ```
 ~/.config/tomtly/
-  config.json     extensions, timezone, rooms and allowed host names
+  config.json     timezone, rooms and allowed host names: nothing secret
   automations/    your scripts, the only part the service can write to
-  extensions/     extensions you develop, listed as ./extensions/<folder>
-  secrets/        credentials files, and env for ${VARS}
+  extensions/     extensions you develop, added on the page as ./extensions/<folder>
 ```
 
-Everything the service writes itself is in Postgres: accounts, which scripts are live, the activity and audit logs, extensions you add with their settings, approved access, blocked attempts, and uploaded or downloaded extension code. So `pg_dump` plus this folder is a complete backup. Treat the dump like your secrets, since extension settings are stored unencrypted.
+Everything the service writes itself is in Postgres: accounts, which scripts are live, the activity and audit logs, extensions you add with their settings, approved access, blocked attempts, and uploaded or downloaded extension code. So `pg_dump`, this folder and your `.env` are a complete backup. Extension settings are encrypted with `TOMTLY_SECRET_KEY` from `.env`, so keep that key with the dump, and apart from it if you can.
 
-Set `TOMTLY_DIR` in `.env` to keep it elsewhere. Values like `${TOKEN}` in `config.json` are read from the environment, which Docker fills from `secrets/env`, and the service refuses to start if one is unset.
+Set `TOMTLY_DIR` in `.env` to keep it elsewhere.
 
 `rooms` in `config.json` maps a room name to device ids such as `tuya:<id>`, for grouping on the page. It's optional, and rooms show in alphabetical order.
 
 ## Integrations
 
 Every integration and plugin is an extension. The official ones are folders of [drax98/tomtly-extensions](https://github.com/drax98/tomtly-extensions). Add one on the **Integrations** or **Plugins**
-page (**From a GitHub repo**, or from the marketplace's website, whose **Get** opens it here to install), or list it in
-`config.json` under `extensions`, as [examples/config.json](examples/config.json) does.
+page: **From a GitHub repo** with the repository, folder and version below, or from the marketplace's website, whose
+**Get** opens it here to install. You fill in its settings there, keys and credential files included.
 
 | Folder | Devices | Protocol |
 |---|---|---|
@@ -66,8 +68,8 @@ page (**From a GitHub repo**, or from the marketplace's website, whose **Get** o
 
 Each folder's README says how to get its credentials, what it was tested against, and how it finds a device whose
 address changed. Device ids are `<extension id>:<id>`, such as `tuya:<id>`, `xiaomi:<did>` or `gree:<mac>`. To write
-your own, see [docs/extensions.md](docs/extensions.md). `config.json` no longer accepts `adapters` or `plugins`, and the
-service refuses to start if they are there.
+your own, see [docs/extensions.md](docs/extensions.md). `config.json` no longer accepts `adapters`, `plugins` or
+`extensions`, and the service refuses to start if they are there.
 
 ## Automations
 
@@ -82,14 +84,7 @@ home.daily("00:30", () => plug.set("switch", false));
 
 ## Extensions
 
-Extensions add devices, data or actions without changing this repo. The integrations above are extensions too. Add one on the **Integrations** or **Plugins** page, or list it in `config.json`:
-
-```json
-"extensions": [
-  { "source": "github:drax98/tomtly-extensions/weather@weather-v1.1.1", "settings": { "latitude": 52.23, "longitude": 21.01 } },
-  { "source": "./extensions/my-own", "settings": {} }
-]
-```
+Extensions add devices, data or actions without changing this repo. The integrations above are extensions too. Add one on the **Integrations** or **Plugins** page, from GitHub (such as `github:drax98/tomtly-extensions/weather@weather-v1.1.1`), the marketplace, or a folder of your own in your config folder's `extensions/`.
 
 You can also upload a `.zip`, `.tar.gz` or `extension.ts` on those pages. An extension only gets the access it declares, which you approve before it runs, and blocked attempts show on its card. The script editor suggests the real device ids, value codes and plugin fields of your home automatically. To build one, start with [docs/extensions.md](docs/extensions.md), the [API reference](docs/extension-api.md) and the [style guide](docs/extension-style-guide.md).
 
@@ -182,7 +177,7 @@ On Linux, the container runs as user 65534, so that user needs write access to `
 - A device that gets a new address is searched for only in its own /24 network (at most 254 addresses per scan); each integration's README says how it proves the device is the same one.
 - Which Tuya data points are read-only is inferred from category and code names, because the cloud mapping doesn't say.
 - An extension that listens on a port or takes webhooks is reachable by whoever can reach it, and from Docker the port has to be published in `compose.yaml`. Webhooks arrive on the service's ordinary port.
-- Changing what's in `extensions` in `config.json`, or an extension's code, needs a restart.
+- Changing the code of an extension in your config folder needs a restart.
 - The service has to be running for automations to run. Rules you move out of a vendor's cloud or gateway depend on the machine hosting it.
 
 ## Credits

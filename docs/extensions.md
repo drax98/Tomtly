@@ -34,24 +34,13 @@ Before an update, you see what changed in each version and a form for anything t
 access token. Update stays off until the required fields are filled. If it's refused, the old version keeps running as
 if nothing happened, and what you typed stays in the form.
 
-One listed in `config.json` is changed in that file. Nothing prompts you there: if a new version needs a setting, its card
-names the one that's missing.
-
 If it receives webhooks, its address is shown once, when you add or approve it, as `/hooks/<id>/<secret>`. Copy it then
 and give it to the service that should send messages: only a hash is kept, so it can't be shown again. **New webhook
 address** makes another and the old one stops working. The secret in the address is all that protects it, and the rest
 of Tomtly still needs a login, so don't open the whole panel to the internet for it: have your HTTPS proxy pass
 only `/hooks/` through.
 
-To keep it in version control instead, add it to `extensions` in `config.json` and restart:
-
-```json
-"extensions": [
-  { "source": "github:someone/tomtly-hue@v1.0.0", "settings": { "host": "192.168.1.13", "apiKey": "${HUE_API_KEY}" } },
-  { "source": "github:someone/monorepo/packages/tides@3f2a91c", "settings": {} },
-  { "source": "./extensions/my-own", "settings": {} }
-]
-```
+Where one can come from, as the page and the API write it:
 
 | Source | |
 |---|---|
@@ -60,12 +49,10 @@ To keep it in version control instead, add it to `extensions` in `config.json` a
 | `./folder` | A folder inside your config folder |
 
 Each extension is downloaded once and kept, so it can't change unless you change the `ref`, and it keeps working with no
-internet. To update one from `config.json`, change the `ref` there. One added on the page has **Update from GitHub**.
+internet. **Update from GitHub** moves it to another `ref`.
 
-In `config.json`, put secrets in `secrets/env` in your config folder, one `HUE_API_KEY=...` per line, and refer to them
-as `${HUE_API_KEY}`. The service won't start if one is unset.
-
-An extension from `config.json` waits for you to choose **Approve access** on the page before it runs.
+Its settings, keys and files included, are kept in the database, never in a file. A key or a file is never shown again on
+the page or by the API: to change one, enter it again.
 
 The pages list each extension, its access, which settings it needs and any problem. A broken extension only affects
 itself.
@@ -81,7 +68,7 @@ runtime regardless of what the code tries.
 - **A new version can't quietly ask for more.** If a version asks for anything you haven't approved, it stops until you
   approve it. That includes a new address for a host in a setting: the page shows the address itself, and approving
   covers that address in that setting. Typing a new one under **Edit settings** is your approval, so it doesn't ask
-  again. An address changed any other way asks once: in `config.json`, moved by a migration's `rename`, or typed into
+  again. An address changed any other way asks once: moved by a migration's `rename`, or typed into
   an update's form, whose wording is the author's.
 - **Blocked attempts are recorded,** and shown on its card with what it tried. Catching the error doesn't hide it,
   because they're counted outside the extension. After 10 it's stopped and needs approving again.
@@ -101,7 +88,7 @@ Where the limits are:
 - It controls the devices it provides, and scripts may act on what it reports, so only install what you'd trust with
   them.
 - Memory can't be limited per extension. Instead the service watches its own memory (512 MB by default, set with
-  `EXTENSION_HEAP_LIMIT_MB` in `secrets/env`), and past that it stops the extension whose current call the heap grew most during and records a
+  `EXTENSION_HEAP_LIMIT_MB` in `.env`), and past that it stops the extension whose current call the heap grew most during and records a
   `memory` violation against each. A single built-in that grabs gigabytes in one step, such as
   `"x".repeat(2**30)`, can't be interrupted and could still bring the service down first.
 - An extension that listens on a port or takes webhooks can be reached by whoever can reach that port or address.
@@ -176,16 +163,17 @@ For credentials a tool writes to a file, such as the Tuya device list, declare a
 
 ```ts
 settings: {
-  devices: { label: "Devices file", type: "file", required: true, secretFields: ["key"], help: "Inside your config folder, like secrets/tuya.json." },
+  devices: { label: "Devices file", type: "file", required: true, secretFields: ["key"], help: "The devices.json the tinytuya wizard writes." },
 },
 ```
 
-The owner gives a path inside the config folder (`"devices": "secrets/tuya.json"`), and `ctx.settings.devices` is the
-file's text, up to 1 MiB. Its whole text, and any long stretch of it, is refused in any request, socket payload, output
-or log, and the page shows the path with "Reads the file you choose for: Devices file". It can't have a default. For a
-JSON file, `secretFields` makes the named fields, such as `key`, secrets of their own at any depth; list every one,
-because a value you don't list, like a device's name, can be published as you'd expect. The file is read when the
-extension starts, so restart after changing it. [What exactly is checked](extension-api.md#what-the-secret-checks-catch).
+The owner chooses the file on the page when adding the extension. Its text, up to 1 MiB, is kept encrypted in the
+database with the other settings, and `ctx.settings.devices` is that text. Like a key, it is never shown again: the page
+says only that it is set, and choosing nothing when editing keeps it. Its whole text, and any long stretch of it, is
+refused in any request, socket payload, output or log, and the access list says "Holds the file you give it for: Devices
+file". It can't have a default. For a JSON file, `secretFields` makes the named fields, such as `key`, secrets of their
+own at any depth; list every one, because a value you don't list, like a device's name, can be published as you'd
+expect. [What exactly is checked](extension-api.md#what-the-secret-checks-catch).
 
 ### Receive messages and hold a connection
 
@@ -277,19 +265,18 @@ is always asked for again, so the page never shows it.
 
 A required setting no migration mentions is still asked for, without an explanation, so write the note.
 
-A person only ever types what `ask` lists, and what they type goes in your settings and nowhere else. `config.json` users
-aren't prompted: list what changed in your README for them.
+A person only ever types what `ask` lists, and what they type goes in your settings and nowhere else.
 
 ### Develop it
 
-1. Put your folder in `extensions/` in your config folder, and add `{ "source": "./extensions/your-id" }` to `config.json`.
+1. Put your folder in `extensions/` in your config folder, and add it on the page: **From local files**, then the folder `./extensions/your-id`.
 2. Copy [`sdk/extension.d.ts`](../sdk/extension.d.ts) into an `sdk/` folder next to it, and a `tsconfig.json` like [weather's](https://github.com/drax98/tomtly-extensions/blob/main/weather/tsconfig.json), for
    autocomplete and type checks. The service doesn't check types when it loads your code, so run `tsc` or use an editor.
 3. Restart the service after each change with `docker compose restart`.
 4. Problems show on your extension's card on the Integrations or Plugins page, and `ctx.log` writes to `docker compose logs`.
    To see your data, open the plugin's **Show data**, or `curl localhost:8099/api/devices`.
 
-Start from [weather](https://github.com/drax98/tomtly-extensions/tree/main/weather) for a plugin. For a LAN protocol over TCP or UDP, [tuya](https://github.com/drax98/tomtly-extensions/tree/main/tuya), [xiaomi](https://github.com/drax98/tomtly-extensions/tree/main/xiaomi) and [gree](https://github.com/drax98/tomtly-extensions/tree/main/gree) are complete examples. They share one repository, [tomtly-extensions](https://github.com/drax98/tomtly-extensions): a folder per extension with `extension.ts` at its top, `sdk/extension.d.ts` once at the root, tests in `test/<folder>/` against a mock of the host (`test/harness.ts`), run with `pnpm test`, and tags like `tuya-v1.2.2`. Copy its layout to start.
+Start from [weather](https://github.com/drax98/tomtly-extensions/tree/main/weather) for a plugin. For a LAN protocol over TCP or UDP, [tuya](https://github.com/drax98/tomtly-extensions/tree/main/tuya), [xiaomi](https://github.com/drax98/tomtly-extensions/tree/main/xiaomi) and [gree](https://github.com/drax98/tomtly-extensions/tree/main/gree) are complete examples. They share one repository, [tomtly-extensions](https://github.com/drax98/tomtly-extensions): a folder per extension with `extension.ts` at its top, `sdk/extension.d.ts` once at the root, tests in `test/<folder>/` against a mock of the host (`test/harness.ts`), run with `pnpm test`, and tags like `tuya-v1.2.3`. Copy its layout to start.
 
 ### Give scripts types
 

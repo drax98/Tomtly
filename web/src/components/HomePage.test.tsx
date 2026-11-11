@@ -6,7 +6,7 @@ import { HomePage, problems } from "./HomePage";
 
 const dp = (code: string, value: number | boolean | null, over: Partial<DataPoint> = {}): DataPoint => ({ dp: code, code, type: "Integer", values: {}, scale: 0, writable: false, value, ...over });
 const device = (id: string, name: string, over: Partial<Device> = {}): Device => ({ id, adapter: "tuya", name, kind: "light", category: "", product: "", online: true, dps: [], ...over });
-const ext = (over: Partial<ExtensionStatus>): ExtensionStatus => ({ source: "./extensions/x", name: "X", access: [], provides: ["devices"], running: true, removable: false, settings: [], ...over } as ExtensionStatus);
+const ext = (over: Partial<ExtensionStatus>): ExtensionStatus => ({ source: "./extensions/x", name: "X", access: [], provides: ["devices"], running: true, settings: [], ...over } as ExtensionStatus);
 
 const heater = device("h", "Radiator", { kind: "climate", dps: [dp("temp_current", 19.5, { values: { unit: "°C" } }), dp("temp_set", 21, { values: { unit: "°C" } }), dp("heating_state", true, { type: "Boolean" })] });
 const sensor = device("s", "Door", { dps: [dp("battery_percentage", 12)] });

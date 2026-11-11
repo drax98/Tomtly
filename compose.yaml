@@ -14,21 +14,21 @@ services:
       # POSTGRES_PASSWORD goes into a URL as it is, so it must be URL-safe: letters and digits, like `openssl rand -hex 24`.
       HOST_IPS: ${HOST_IPS:-} # this machine's LAN address if BIND_ADDRESS isn't localhost, so extensions can't reach the service through it
       DATABASE_URL: postgres://tomtly:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env, for example with openssl rand -hex 24}@postgres:5432/tomtly
+      # Encrypts extension settings, keys and credential files included. Back it up with the database: without it they're lost.
+      TOMTLY_SECRET_KEY: ${TOMTLY_SECRET_KEY:?set TOMTLY_SECRET_KEY in .env, for example with openssl rand -hex 32}
       # The marketplace is a separate service, shared by every home. Left blank, the Marketplace page says it isn't set up.
       MARKETPLACE_URL: ${MARKETPLACE_URL:-}
       MARKETPLACE_PUBLIC_KEY: ${MARKETPLACE_PUBLIC_KEY:-}
       MARKETPLACE_APPROVAL_PUBLIC_KEYS: ${MARKETPLACE_APPROVAL_PUBLIC_KEYS:-}
       # The reverse proxy in front of it, so sign-in limits and the audit log see real addresses.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      # How much memory extensions may push the service to before the hungriest is stopped, in MB. 512 by default.
+      EXTENSION_HEAP_LIMIT_MB: ${EXTENSION_HEAP_LIMIT_MB:-}
     # Localhost by default. See README before setting BIND_ADDRESS: it needs HTTPS in front of it.
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8099}:8099"
-    # Everything about your home: config.json, automations/ and secrets/. Kept outside the repo.
+    # Your config.json and automations/. Kept outside the repo, and nothing secret: extensions' settings are in Postgres.
     # Only automations/ is writable, for the script editor. The service's own state is in Postgres, and /data is only a cache.
-    # Values for ${VARS} in config.json, like an extension's API key. Optional.
-    env_file:
-      - path: ${TOMTLY_DIR:-${HOME}/.config/tomtly}/secrets/env
-        required: false
     volumes:
       - ${TOMTLY_DIR:-${HOME}/.config/tomtly}:/config:ro
       - ${TOMTLY_DIR:-${HOME}/.config/tomtly}/automations:/config/automations

@@ -33,7 +33,7 @@ func (e *Engine) homeObject(s *script) map[string]any {
 				_, _, known = e.Plugins.Get(id)
 			}
 			if !known && e.pluginApproved(s, id) {
-				panic(scriptError(s.vm, fmt.Sprintf("unknown plugin %q: add it to plugins in config.json", id)))
+				panic(scriptError(s.vm, fmt.Sprintf("unknown plugin %q: add it on the Plugins page", id)))
 			}
 			return e.pluginObject(s, id)
 		},

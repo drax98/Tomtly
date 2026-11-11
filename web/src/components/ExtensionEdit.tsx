@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
-import { api, type ExtensionStatus } from "@/api";
+import { api, hiddenSetting, type ExtensionStatus } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -43,10 +43,10 @@ export function WebhookAddress({ path, onClose }: { path: string; onClose: () =>
   );
 }
 
-/** Changes the settings of an extension added on this page. A secret is never shown: left blank, it keeps the one it has. */
+/** Changes the settings of an extension. A secret or a file is never shown: left empty, it keeps the one it has. */
 export function EditSettings({ extension, onClose, onSaved }: { extension: ExtensionStatus; onClose: () => void; onSaved: () => void }) {
   const [values, setValues] = useState<Record<string, unknown>>(() =>
-    Object.fromEntries(extension.settings.filter((s) => s.type !== "secret" && s.value !== undefined).map((s) => [s.key, s.value])),
+    Object.fromEntries(extension.settings.filter((s) => !hiddenSetting(s) && s.value !== undefined).map((s) => [s.key, s.value])),
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,11 +56,11 @@ export function EditSettings({ extension, onClose, onSaved }: { extension: Exten
     setBusy(true);
     setError(null);
     try {
-      // A blank setting is sent as blank so it is cleared; a blank secret is left out so it is kept.
+      // A blank setting is sent as blank so it is cleared; a blank secret or file is left out so it is kept.
       const settings: Record<string, unknown> = {};
       for (const s of extension.settings) {
         const value = values[s.key];
-        if (s.type === "secret") {
+        if (hiddenSetting(s)) {
           if (value !== undefined && value !== "") settings[s.key] = value;
         } else {
           settings[s.key] = value ?? "";

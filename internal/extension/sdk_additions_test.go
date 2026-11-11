@@ -2,8 +2,6 @@ package extension
 
 import (
 	"net"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,32 +15,18 @@ func fileExtension(body string) string {
 		data:{everySeconds:60,fetch(ctx){` + body + `}}});`
 }
 
-func configFile(t *testing.T, m *Manager, name, text string) {
-	t.Helper()
-	path := filepath.Join(m.configDir, name)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte(text), 0o600); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestFileSettingsGiveTextAndStayOutOfThePage(t *testing.T) {
-	m := run(t, folder(t, fileExtension(`return {size: JSON.parse(ctx.settings.devices).length}`)), map[string]any{"devices": "secrets/d.json"}, allowLoopback, func(m *Manager) {
-		configFile(t, m, "secrets/d.json", `[{"id":"one","key":"`+key+`"}]`)
-	})
+	text := `[{"id":"one","key":"` + key + `"}]`
+	m := run(t, folder(t, fileExtension(`return {size: JSON.parse(ctx.settings.devices).length}`)), map[string]any{"devices": text}, allowLoopback)
 	eventually(t, "the plugin to publish", func() bool { data, _, _ := m.plugins.Get("a"); return strings.Contains(string(data), `"size":1`) })
 	status := m.Statuses()[0]
-	if status.Settings[0].Value != "secrets/d.json" {
-		t.Fatalf("the page should see the path, got %v", status.Settings[0].Value)
+	if !status.Settings[0].Set || status.Settings[0].Value != nil {
+		t.Fatalf("the page may know it is set, never what it holds: %+v", status.Settings[0])
 	}
 }
 
 func TestAFileFieldCantBeReturned(t *testing.T) {
-	m := run(t, folder(t, fileExtension(`return {leak: JSON.parse(ctx.settings.devices)[0].key}`)), map[string]any{"devices": "d.json"}, allowLoopback, func(m *Manager) {
-		configFile(t, m, "d.json", `[{"id":"one","key":"`+key+`"}]`)
-	})
+	m := run(t, folder(t, fileExtension(`return {leak: JSON.parse(ctx.settings.devices)[0].key}`)), map[string]any{"devices": `[{"id":"one","key":"` + key + `"}]`}, allowLoopback)
 	failsWith(t, m, "secret")
 }
 
@@ -54,23 +38,12 @@ func TestAFileFieldCantBeSent(t *testing.T) {
 	defer udp.Close()
 	port := udp.LocalAddr().(*net.UDPAddr).Port
 	m := run(t, folder(t, fileExtension(`ctx.udp.request("127.0.0.1", `+strconv.Itoa(port)+`, ctx.crypto.hex(JSON.parse(ctx.settings.devices)[0].key), {timeoutMs: 100})`)),
-		map[string]any{"devices": "d.json"}, allowLoopback, func(m *Manager) { configFile(t, m, "d.json", `[{"key":"`+key+`"}]`) })
+		map[string]any{"devices": `[{"key":"` + key + `"}]`}, allowLoopback)
 	failsWith(t, m, "can't be sent")
 }
 
-func TestAFilePathMustStayInTheConfigFolder(t *testing.T) {
-	for _, path := range []string{"../outside.json", "/etc/hosts"} {
-		failsWith(t, run(t, folder(t, fileExtension(`return 1`)), map[string]any{"devices": path}, allowLoopback), "inside your config folder")
-	}
-	outside := filepath.Join(t.TempDir(), "outside.json")
-	if err := os.WriteFile(outside, []byte(`{}`), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	failsWith(t, run(t, folder(t, fileExtension(`return 1`)), map[string]any{"devices": "link.json"}, allowLoopback, func(m *Manager) {
-		if err := os.Symlink(outside, filepath.Join(m.configDir, "link.json")); err != nil {
-			t.Fatal(err)
-		}
-	}), "inside your config folder")
+func TestAFileOverOneMiBIsRefused(t *testing.T) {
+	failsWith(t, run(t, folder(t, fileExtension(`return 1`)), map[string]any{"devices": strings.Repeat("x", 1<<20+1)}, allowLoopback), "over 1 MiB")
 }
 
 func TestAFileCantHaveADefault(t *testing.T) {

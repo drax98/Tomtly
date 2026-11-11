@@ -23,11 +23,17 @@ const (
 
 // Postgres is a Store in a PostgreSQL database.
 type Postgres struct {
-	pool *pgxpool.Pool
+	pool   *pgxpool.Pool
+	sealer sealer
 }
 
-// Open connects, then applies any migrations that haven't run. It fails fast if the database isn't reachable.
-func Open(ctx context.Context, databaseURL string) (*Postgres, error) {
+// Open connects, then applies any migrations that haven't run. It fails fast if the database isn't reachable. secretKey
+// (32 bytes) encrypts extension settings, which hold keys and credential files.
+func Open(ctx context.Context, databaseURL string, secretKey []byte) (*Postgres, error) {
+	sealer, err := newSealer(secretKey)
+	if err != nil {
+		return nil, err
+	}
 	cfg, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
 		return nil, errors.New("DATABASE_URL is not a valid connection URL") // the parse error would quote the password
@@ -40,8 +46,12 @@ func Open(ctx context.Context, databaseURL string) (*Postgres, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := &Postgres{pool: pool}
+	p := &Postgres{pool: pool, sealer: sealer}
 	if err := p.migrate(ctx); err != nil {
+		pool.Close()
+		return nil, err
+	}
+	if err := p.sealOldRows(ctx); err != nil {
 		pool.Close()
 		return nil, err
 	}
@@ -137,18 +147,31 @@ func (p *Postgres) RecentEvents(ctx context.Context, limit int) ([]Event, error)
 }
 
 func (p *Postgres) AddedExtensions(ctx context.Context) ([]AddedExtension, error) {
-	rows, err := p.pool.Query(ctx, `SELECT source, settings FROM added_extensions ORDER BY seq`)
+	rows, err := p.pool.Query(ctx, `SELECT source, sealed FROM added_extensions ORDER BY seq`)
 	if err != nil {
 		return nil, err
 	}
-	return pgx.CollectRows(rows, pgx.RowToStructByPos[AddedExtension])
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (AddedExtension, error) {
+		var e AddedExtension
+		var sealed []byte
+		if err := row.Scan(&e.Source, &sealed); err != nil {
+			return e, err
+		}
+		var err error
+		e.Settings, err = p.sealer.open(e.Source, sealed)
+		return e, err
+	})
 }
 
 // SaveAddedExtension takes a fresh seq on replace, so the order matches Memory, which moves a replaced one to the end.
 func (p *Postgres) SaveAddedExtension(ctx context.Context, extension AddedExtension) error {
-	_, err := p.pool.Exec(ctx, `INSERT INTO added_extensions (source, settings) VALUES ($1, $2)
-		ON CONFLICT (source) DO UPDATE SET settings = $2, seq = nextval(pg_get_serial_sequence('added_extensions', 'seq'))`,
-		extension.Source, extension.Settings)
+	sealed, err := p.sealer.seal(extension.Source, extension.Settings)
+	if err != nil {
+		return err
+	}
+	_, err = p.pool.Exec(ctx, `INSERT INTO added_extensions (source, sealed) VALUES ($1, $2)
+		ON CONFLICT (source) DO UPDATE SET sealed = $2, settings = NULL, seq = nextval(pg_get_serial_sequence('added_extensions', 'seq'))`,
+		extension.Source, sealed)
 	return err
 }
 
@@ -213,25 +236,6 @@ func (p *Postgres) Violations(ctx context.Context, extension string, limit int) 
 
 func (p *Postgres) ClearViolations(ctx context.Context, extension string) error {
 	_, err := p.pool.Exec(ctx, `DELETE FROM violations WHERE extension = $1`, extension)
-	return err
-}
-
-func (p *Postgres) RemovedExtensions(ctx context.Context) ([]RemovedExtension, error) {
-	rows, err := p.pool.Query(ctx, `SELECT source, id, name, kind FROM removed_extensions ORDER BY source`)
-	if err != nil {
-		return nil, err
-	}
-	return pgx.CollectRows(rows, pgx.RowToStructByPos[RemovedExtension])
-}
-
-func (p *Postgres) AddRemovedExtension(ctx context.Context, e RemovedExtension) error {
-	_, err := p.pool.Exec(ctx, `INSERT INTO removed_extensions (source, id, name, kind) VALUES ($1, $2, $3, $4)
-		ON CONFLICT (source) DO UPDATE SET id = EXCLUDED.id, name = EXCLUDED.name, kind = EXCLUDED.kind`, e.Source, e.ID, e.Name, e.Kind)
-	return err
-}
-
-func (p *Postgres) DeleteRemovedExtension(ctx context.Context, source string) error {
-	_, err := p.pool.Exec(ctx, `DELETE FROM removed_extensions WHERE source = $1`, source)
 	return err
 }
 

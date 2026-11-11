@@ -176,7 +176,7 @@ func (a *api) extensionRoutes() []route {
 				Source   string         `json:"source"`
 				Settings map[string]any `json:"settings"`
 			}
-			if !readJSON(w, r, &body, maxExtension) {
+			if !readJSON(w, r, &body, maxSettings) {
 				return
 			}
 			status, err := extensions.UpdateSettings(r.Context(), body.Source, body.Settings)
@@ -195,7 +195,7 @@ func (a *api) extensionRoutes() []route {
 				Settings  map[string]any `json:"settings"`
 				Access    []string       `json:"access"`
 			}
-			if !readJSON(w, r, &body, maxExtension) {
+			if !readJSON(w, r, &body, maxSettings) {
 				return
 			}
 			status, err := extensions.Replace(r.Context(), body.Source, body.NewSource, body.Settings, body.Access)
@@ -227,7 +227,7 @@ func (a *api) extensionRoutes() []route {
 				Settings map[string]any `json:"settings"`
 				Access   []string       `json:"access"`
 			}
-			if !readJSON(w, r, &body, maxExtension) {
+			if !readJSON(w, r, &body, maxSettings) {
 				return
 			}
 			status, err := extensions.Add(r.Context(), body.Source, body.Settings, body.Access)
@@ -245,28 +245,6 @@ func (a *api) extensionRoutes() []route {
 			}
 			a.audit(r, "extension.remove", r.URL.Query().Get("source"))
 			reply(w, http.StatusOK, map[string]bool{"removed": true})
-		}},
-		{"GET /api/extensions/removed", auth.ExtensionsManage, func(w http.ResponseWriter, r *http.Request) {
-			removed, err := extensions.RemovedExtensions(r.Context())
-			if err != nil {
-				unavailable(w, err)
-				return
-			}
-			reply(w, http.StatusOK, removed)
-		}},
-		{"POST /api/extensions/restore", auth.ExtensionsManage, func(w http.ResponseWriter, r *http.Request) {
-			var req struct {
-				Source string `json:"source"`
-			}
-			if !readJSON(w, r, &req, maxBody) {
-				return
-			}
-			if err := extensions.RestoreExtension(r.Context(), req.Source); err != nil {
-				reply(w, http.StatusBadRequest, errorBody(err.Error()))
-				return
-			}
-			a.audit(r, "extension.restore", req.Source)
-			reply(w, http.StatusOK, map[string]bool{"restored": true})
 		}},
 	}
 }

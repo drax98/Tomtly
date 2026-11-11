@@ -91,7 +91,7 @@ What makes an extension safe to run in someone's home. **Must** means your exten
 - **Must:** say in your README which access you ask for, and why.
 - **Must:** tag versions and use [semantic versioning](https://semver.org), and keep `version` in step with the tag.
 - **Must:** include a `README.md` with what it supports, how to get each setting, which hosts it contacts and why, and
-  an example `config.json` entry.
+  where to add it from: the repository, folder and version tag.
 - **Must:** say what you tested it against, including models and firmware. Saying "untested" is fine, but say it.
 - Include a licence.
 - Name your repo `tomtly-<name>`, so people can find it.

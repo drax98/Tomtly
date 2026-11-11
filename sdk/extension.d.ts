@@ -8,7 +8,7 @@ interface SettingDefinition {
   label: string;
   /**
    * "secret" is a string that's redacted from logs and errors, and refused if your code returns it.
-   * "file" is a path the owner gives inside their config folder, and your code receives the file's text. Its whole text
+   * "file" is a file the owner chooses on the page, kept encrypted, and your code receives its text (1 MiB at most). Its whole text
    * and any long stretch of it are refused in any request, socket payload or output. It can't have a default.
    * See "What the secret checks catch" in docs/extension-api.md.
    */

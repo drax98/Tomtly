@@ -11,16 +11,12 @@ import (
 	"tomtly/internal/store"
 )
 
-const editConfigFile = "This one is listed in config.json, so edit the file."
-
 // pageInstance finds an extension added on the page, which is the only kind the page may change.
 func (m *Manager) pageInstance(source string) (*instance, error) {
 	inst := m.bySource(source)
 	switch {
 	case inst == nil:
 		return nil, errors.New("no extension from that source")
-	case !inst.removable:
-		return nil, errors.New(editConfigFile)
 	}
 	return inst, nil
 }
@@ -34,7 +30,7 @@ func (m *Manager) swap(old *instance, e entry) error {
 	if at < 0 {
 		return errors.New("it was removed while this was happening")
 	}
-	m.instances[at] = m.launch(m.ctx, e, true)
+	m.instances[at] = m.launch(m.ctx, e)
 	return nil
 }
 
@@ -56,7 +52,7 @@ func (m *Manager) UpdateSettings(ctx context.Context, source string, given map[s
 	}
 	for key, value := range given {
 		if value == nil || value == "" {
-			if l.Settings[key].Type != "secret" {
+			if !hiddenType(l.Settings[key].Type) {
 				delete(merged, key)
 			}
 			continue

@@ -7,7 +7,7 @@ import { PluginsPage } from "./PluginsPage";
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const extension = (over: Partial<ExtensionStatus>): ExtensionStatus => ({
-  source: "github:a/weather@v1", id: "weather", name: "Weather", access: [], provides: ["data"], running: true, removable: false, settings: [], ...over,
+  source: "github:a/weather@v1", id: "weather", name: "Weather", access: [], provides: ["data"], running: true, settings: [], ...over,
 });
 const plugin = (over: Partial<PluginStatus>): PluginStatus => ({ id: "weather", type: "plugin", ...over });
 
@@ -15,7 +15,6 @@ function serve(automations: Partial<AutomationStatus>, extensions: ExtensionStat
   return mockService({
     "GET /api/automations": () => ({ body: { scripts: [], events: [], plugins: [], ...automations } }),
     "GET /api/extensions": () => ({ body: extensions }),
-    "GET /api/extensions/removed": () => ({ body: [] }),
     ...extra,
   });
 }

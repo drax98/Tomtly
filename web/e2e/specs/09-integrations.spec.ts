@@ -22,9 +22,9 @@ test("an integration's card says it's healthy, what it can reach and how it's se
   await expect(fake.getByText("Raw TCP and UDP connections")).toBeVisible();
   await expect(fake.getByText("Configured: Device address")).toBeVisible();
   await expect(fake.getByText(FAKE_HOME)).toBeVisible();
-  // Set in config.json, so it's changed there and not here.
-  await expect(fake.getByRole("button", { name: "Edit settings" })).toHaveCount(0);
-  await expect(fake.getByRole("button", { name: "Upload new version" })).toHaveCount(0);
+  // Added on the page, like every extension, so it's changed there too.
+  await expect(fake.getByRole("button", { name: "Edit settings" })).toBeVisible();
+  await expect(fake.getByRole("button", { name: "Upload new version" })).toBeVisible();
 });
 
 test("opening one shows its devices and what the scan found", async ({ page }) => {

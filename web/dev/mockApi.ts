@@ -158,7 +158,6 @@ export function mockApi(): Plugin {
         if (path === "/marketplace/inspect" && JSON.parse((await body(req)) || "{}").id === "weather") return send(200, weatherUpdate);
         if (path === "/extensions/inspect" || path === "/extensions/upload") return send(200, weatherUpdate);
         if (path === "/marketplace/inspect") return send(200, ext({ source: "market:tides@0.3.0#" + "a".repeat(64), id: "tides", name: "Tides", version: "0.3.0", running: false, access: ["Internet: tides.example.com"] }));
-        if (path === "/extensions/removed") return send(200, []);
         if (path === "/extensions") return send(200, extensions);
         if (path.endsWith("/discover")) return send(200, { supported: true, devices: [] });
         if (path === "/integrations") return send(200, [{ type: "tuya", name: "Tuya", description: "Smart plugs, lights and heating", devices: devices.map((d) => ({ id: d.id, name: d.name, kind: d.kind, online: d.online })), access: ["network: openapi.tuyaeu.com"] }, { type: "weather", name: "Weather", devices: [], extension: extensions[0] }]);

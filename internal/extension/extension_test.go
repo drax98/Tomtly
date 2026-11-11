@@ -59,7 +59,7 @@ func run(t *testing.T, source string, settings map[string]any, setup ...func(*Ma
 	for _, f := range setup {
 		f(m)
 	}
-	m.add(ctx, entry{Source: source, Settings: settings}, false)
+	m.add(ctx, entry{Source: source, Settings: settings})
 	return m
 }
 
@@ -242,8 +242,8 @@ func TestTwoExtensionsCantShareAnID(t *testing.T) {
 	defer cancel()
 	m := newManager(t.TempDir(), t.TempDir(), store.NewMemory(), hub(t))
 	t.Cleanup(func() { stopAll(m) })
-	m.add(ctx, entry{Source: folder(t, source)}, false)
-	m.add(ctx, entry{Source: folder(t, source)}, false)
+	m.add(ctx, entry{Source: folder(t, source)})
+	m.add(ctx, entry{Source: folder(t, source)})
 	eventually(t, "one to be refused", func() bool {
 		for _, s := range m.Statuses() {
 			if strings.Contains(s.Error, "already") {

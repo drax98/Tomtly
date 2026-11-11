@@ -90,21 +90,6 @@ func TestEditSettings(t *testing.T) {
 	}
 }
 
-func TestEditingAConfigExtensionIsRefused(t *testing.T) {
-	m := pageManager(t)
-	source := m.configDir + "/extensions/mine"
-	m.add(m.ctx, entry{Source: source, Settings: map[string]any{"key": "x"}}, false)
-	if _, err := m.UpdateSettings(context.Background(), source, map[string]any{"note": "n"}); err == nil || !strings.Contains(err.Error(), "edit the file") {
-		t.Fatalf("got %v", err)
-	}
-	if _, err := replaceSeen(m, context.Background(), source, "./extensions/mine", nil); err == nil || !strings.Contains(err.Error(), "edit the file") {
-		t.Fatalf("got %v", err)
-	}
-	if _, err := m.UpdateSettings(context.Background(), "./extensions/nobody", nil); err == nil {
-		t.Fatal("an unknown source was edited")
-	}
-}
-
 const (
 	versionOne = `defineExtension({id:"keep",name:"Keep",version:"1",access:{storage:true},settings:{key:{label:"K",type:"secret",required:true}},
 		data:{fetch(c){ c.storage.set("seen", (c.storage.get("seen") || 0) + 1); return {v:1,key:c.settings.key.length,seen:c.storage.get("seen")}; }}});`

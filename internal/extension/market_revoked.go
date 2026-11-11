@@ -144,11 +144,10 @@ type MarketUpdate struct {
 }
 
 // withMarketUpdate adds to a status that the marketplace has a newer version of this copy. It reads the catalog the home last
-// verified, which the background check keeps fresh, so listing extensions never waits on the marketplace. Only a copy added on
-// the page can be updated there: one in config.json is changed in the file.
+// verified, which the background check keeps fresh, so listing extensions never waits on the marketplace.
 func (m *Manager) withMarketUpdate(s Status) Status {
 	match := marketSource.FindStringSubmatch(s.Source)
-	if match == nil || m.market == nil || !s.Removable {
+	if match == nil || m.market == nil {
 		return s
 	}
 	m.market.mu.Lock()

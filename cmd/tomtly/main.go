@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,11 +32,10 @@ import (
 // config is the home's config.json.
 type config struct {
 	Timezone string `json:"timezone"`
-	// Moved to extensions. Set only to explain that at startup, rather than quietly losing every device.
-	Adapters json.RawMessage `json:"adapters"`
-	Plugins  json.RawMessage `json:"plugins"`
-	// Integrations and plugins, from a local folder or GitHub.
-	Extensions []json.RawMessage   `json:"extensions"`
+	// Gone from this file. Set only to explain that at startup, rather than quietly losing every device.
+	Adapters   json.RawMessage     `json:"adapters"`
+	Plugins    json.RawMessage     `json:"plugins"`
+	Extensions json.RawMessage     `json:"extensions"`
 	Rooms      map[string][]string `json:"rooms"`
 	// RoomOrder is the rooms in the order the file lists them, which a map loses.
 	RoomOrder []string `json:"-"`
@@ -50,34 +50,27 @@ func env(name, fallback string) string {
 	return fallback
 }
 
-// loadConfig reads config.json, expanding ${VARS} so secrets can stay in the environment.
+// loadConfig reads config.json. It holds no secrets: extensions and their settings are added on the page and kept in
+// the database.
 func loadConfig(path string) (*config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var missing []string
-	expanded := os.Expand(string(data), func(name string) string {
-		v, ok := os.LookupEnv(name)
-		if !ok {
-			missing = append(missing, name)
-		}
-		return v
-	})
-	if len(missing) > 0 {
-		return nil, fmt.Errorf("%s uses unset environment variables: %v", path, missing)
-	}
 	var cfg config
-	if err := json.Unmarshal([]byte(expanded), &cfg); err != nil {
+	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	if len(cfg.Adapters) > 0 || len(cfg.Plugins) > 0 {
 		return nil, fmt.Errorf(`%s: "adapters" and "plugins" are gone. Integrations and plugins are extensions now: see docs/extensions.md`, path)
 	}
+	if len(cfg.Extensions) > 0 {
+		return nil, fmt.Errorf(`%s: "extensions" is gone. Add each one on the Integrations or Plugins page, which keeps its settings in the database, then remove the list`, path)
+	}
 	if cfg.Timezone == "" {
 		cfg.Timezone = "UTC"
 	}
-	cfg.RoomOrder = objectKeys([]byte(expanded), "rooms")
+	cfg.RoomOrder = objectKeys(data, "rooms")
 	return &cfg, nil
 }
 
@@ -87,13 +80,17 @@ func openStore(ctx context.Context, databaseURL string) (*store.Postgres, error)
 	if databaseURL == "" {
 		return nil, errors.New("DATABASE_URL is not set; it is the Postgres connection URL the service keeps its state in")
 	}
+	key, err := hex.DecodeString(os.Getenv("TOMTLY_SECRET_KEY"))
+	if err != nil || len(key) != 32 {
+		return nil, errors.New("TOMTLY_SECRET_KEY must be 64 hex characters, like openssl rand -hex 32 makes; it encrypts extension settings, so keep it with your backups")
+	}
 	deadline := time.Now().Add(2 * time.Minute)
 	for {
 		attempt, cancel := context.WithTimeout(ctx, 20*time.Second)
-		st, err := store.Open(attempt, databaseURL)
+		st, err := store.Open(attempt, databaseURL, key)
 		cancel()
-		if err == nil {
-			return st, nil
+		if err == nil || errors.Is(err, store.ErrWrongKey) {
+			return st, err
 		}
 		if ctx.Err() != nil || time.Now().After(deadline) {
 			return nil, fmt.Errorf("database not reachable after 2 minutes: %w", err)
@@ -133,7 +130,7 @@ func run() error {
 	}
 	defer st.Close()
 	plugins := plugin.NewHub()
-	extensions, err := extension.Start(ctx, cfg.Extensions, configDir, env("DATA_DIR", "data"), st, plugins)
+	extensions, err := extension.Start(ctx, configDir, env("DATA_DIR", "data"), st, plugins)
 	if err != nil {
 		return err
 	}

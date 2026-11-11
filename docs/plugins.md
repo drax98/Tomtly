@@ -4,13 +4,8 @@ A plugin brings outside data, like the weather or energy prices, into your scrip
 plugins are things you only read.
 
 A plugin is an [extension](extensions.md) that provides `data`, such as [weather](https://github.com/drax98/tomtly-extensions/tree/main/weather). Add it on the **Plugins**
-page, or list it in `config.json`, and restart the service to pick up changes:
-
-```json
-"extensions": [
-  { "source": "github:drax98/tomtly-extensions/weather@weather-v1.1.1", "settings": { "latitude": 52.23, "longitude": 21.01 } }
-]
-```
+page, for example from GitHub as the repository `drax98/tomtly-extensions`, the folder `weather` and the version
+`weather-v1.1.1`, and fill in its settings there.
 
 A plugin's name for scripts is its extension's `id`, so `weather`. Each one refreshes on the
 `everySeconds` its extension sets, and the page shows the latest data and any failure.

@@ -148,7 +148,7 @@ at most 2 seconds. Call `ctx.publish` with what arrived.
 
 ## Settings
 
-Declare what you need, and the person running your extension sets it under `settings` in `config.json`. Your code reads
+Declare what you need, and the person running your extension fills it in when they add it on the page. Your code reads
 `ctx.settings.<key>`, typed from your declaration.
 
 | Field | |
@@ -161,9 +161,9 @@ Declare what you need, and the person running your extension sets it under `sett
 | `secretFields` | For a `file` holding JSON: names of fields, such as `["key"]`, whose string values (8 characters or more) are secrets of their own, at any depth. Nothing else in the file is recognised on its own |
 | `sendTo` | For a `secret`: the `access.network` entries it may go to. The owner approves each one. Refused to anywhere else, and recorded. Without it, the secret can't leave at all |
 
-A `file` setting is a path inside the owner's config folder, such as `secrets/tuya.json`. Your code receives the file's
-text (up to 1 MiB, read when the extension starts), and it is treated as a secret, as described below, and shown on the
-page only as the path with "Reads the file you choose for: <label>".
+A `file` setting is a file the owner chooses on the page, such as the device list a vendor tool wrote. Your code receives
+its text (up to 1 MiB), which is kept encrypted with the other settings and treated as a secret, as described below. The
+page never shows it again, and its access list says "Holds the file you give it for: <label>".
 
 A setting that isn't declared, or has the wrong type, is an error. A `secret` gets these protections:
 
@@ -395,13 +395,11 @@ These need signing in, or an API token, with permission for extensions: see the 
 | `POST /api/extensions/upload?name=<file>` | Stores a `.zip`, `.tar.gz`, `.tgz` or `.ts` of up to 16 MiB, sent as `application/octet-stream`, and answers like inspect, with a source to add it by |
 | `POST /api/extensions` | Adds `{"source": ..., "settings": {...}}`, approves its access and starts it |
 | `POST /api/extensions/approve` | Approves what `{"source": ...}` asks for now, clears its blocked attempts and starts it. If that made its first webhook address, `webhook` in the answer holds it, once |
-| `POST /api/extensions/settings` | Sets `{"source": ..., "settings": {...}}` on one added on the page and restarts it. A secret left out or blank keeps its value, a blank setting is unset, and one left out stays. The audit log names the settings, never the values. One from `config.json` is refused |
+| `POST /api/extensions/settings` | Sets `{"source": ..., "settings": {...}}` on one added on the page and restarts it. A secret left out or blank keeps its value, a blank setting is unset, and one left out stays. The audit log names the settings, never the values |
 | `POST /api/extensions/replace` | Swaps `{"source": ..., "newSource": ...}` for a new version of the same extension, keeping its settings and saved data. A different `id` is refused. What it asks for beyond what was approved waits for approval |
 | `POST /api/extensions/webhook-token` | Makes a new webhook address for `{"source": ...}` and returns it as `webhook`, once. The old one stops working |
 | `POST`, `GET`, `PUT /hooks/<id>/<secret>[/...]` | Not under `/api` and needs no login: the address is the credential. Sends a message to an extension's `webhooks.receive` |
-| `DELETE /api/extensions?source=...` | Stops one and deletes its approvals and storage. One added on the page goes with its settings. One from `config.json` stays in the file and is remembered as removed, even across restarts |
-| `GET /api/extensions/removed` | The ones from `config.json` that were removed |
-| `POST /api/extensions/restore` | Starts `{"source": ...}` from that list again, waiting for approval |
+| `DELETE /api/extensions?source=...` | Stops one and deletes its approvals and storage. and its settings |
 | `GET /api/automations/sdk` | The types the script editor uses, including those generated for this home |
 
 ## Removing devices and finding them again

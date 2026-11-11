@@ -1,14 +1,14 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
-import { card, nav, open, OWNER, ownerApi, peopleAndDevices } from "../support/home";
+import { approve, card, nav, open, OWNER, ownerApi, peopleAndDevices } from "../support/home";
 import { deviceValue, freshHome } from "../support/stack";
 
 let api: APIRequestContext;
 
 test.beforeEach(async () => {
-  // The bomb starts with the service, so it's already been stopped (or is being stopped) by the time a page opens.
   await freshHome({ config: "memory" });
   api = await ownerApi();
   await peopleAndDevices(api);
+  await approve(api, "./extensions/memory-bomb");
 });
 
 test("an extension that uses too much memory is stopped, the page says so, and the rest of the home keeps working", async ({ page }) => {

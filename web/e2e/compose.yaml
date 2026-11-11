@@ -83,6 +83,7 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://tomtly:e2e-only@postgres:5432/tomtly
+      TOMTLY_SECRET_KEY: e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0
       MARKETPLACE_URL: ${E2E_MARKET_URL:-}
       MARKETPLACE_PUBLIC_KEY: ${E2E_MARKET_KEY:-}
       MARKETPLACE_APPROVAL_PUBLIC_KEYS: ${E2E_MARKET_APPROVAL_KEY:-}
@@ -92,7 +93,7 @@ services:
     tmpfs:
       - /data:uid=65534,gid=65534,size=128m
     volumes:
-      - ./fixtures/home/configs/${E2E_CONFIG:-devices}.json:/config/config.json:ro
+      - ./.run/config.json:/config/config.json:ro
       - ./fixtures/home/extensions:/config/extensions:ro
       - ./.run/automations:/config/automations
       - github-ca:/ca:ro

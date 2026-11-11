@@ -38,8 +38,7 @@ func TestEnvFallsBackOnlyWhenUnsetOrEmpty(t *testing.T) {
 }
 
 func TestLoadConfig(t *testing.T) {
-	t.Setenv("TOMTLY_TEST_SECRET", "s3cret")
-	dir := writeConfig(t, `{"rooms":{"B":["x"],"A":[]},"allowedHosts":["${TOMTLY_TEST_SECRET}.example"]}`)
+	dir := writeConfig(t, `{"rooms":{"B":["x"],"A":[]},"allowedHosts":["home.example"]}`)
 	cfg, err := loadConfig(filepath.Join(dir, "config.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -47,17 +46,17 @@ func TestLoadConfig(t *testing.T) {
 	if cfg.Timezone != "UTC" {
 		t.Errorf("timezone defaults to UTC, got %q", cfg.Timezone)
 	}
-	if strings.Join(cfg.RoomOrder, ",") != "B,A" || cfg.AllowedHosts[0] != "s3cret.example" {
+	if strings.Join(cfg.RoomOrder, ",") != "B,A" || cfg.AllowedHosts[0] != "home.example" {
 		t.Errorf("%+v", cfg)
 	}
 }
 
 func TestLoadConfigRefusals(t *testing.T) {
 	for name, c := range map[string]struct{ body, want string }{
-		"unset variable": {`{"timezone":"${TOMTLY_TEST_UNSET_VAR}"}`, "TOMTLY_TEST_UNSET_VAR"},
-		"bad json":       {`{`, "config.json"},
-		"old adapters":   {`{"adapters":[]}`, "extensions now"},
-		"old plugins":    {`{"plugins":{}}`, "extensions now"},
+		"extensions":   {`{"extensions":[{"source":"./extensions/x"}]}`, "Add each one on the Integrations or Plugins page"},
+		"bad json":     {`{`, "config.json"},
+		"old adapters": {`{"adapters":[]}`, "extensions now"},
+		"old plugins":  {`{"plugins":{}}`, "extensions now"},
 	} {
 		dir := writeConfig(t, c.body)
 		if _, err := loadConfig(filepath.Join(dir, "config.json")); err == nil || !strings.Contains(err.Error(), c.want) {
@@ -69,11 +68,21 @@ func TestLoadConfigRefusals(t *testing.T) {
 	}
 }
 
+// testSecretKey is 32 bytes of 0x11, as hex.
+var testSecretKey = strings.Repeat("11", 32)
+
 func TestOpenStoreRefusesBadURLs(t *testing.T) {
 	ctx := context.Background()
 	if _, err := openStore(ctx, ""); err == nil || !strings.Contains(err.Error(), "DATABASE_URL is not set") {
 		t.Errorf("empty: %v", err)
 	}
+	for _, bad := range []string{"", "abcd", strings.Repeat("zz", 32)} {
+		t.Setenv("TOMTLY_SECRET_KEY", bad)
+		if _, err := openStore(ctx, "postgres://u:p@127.0.0.1:1/db"); err == nil || !strings.Contains(err.Error(), "TOMTLY_SECRET_KEY must be 64 hex characters") {
+			t.Errorf("key %q: %v", bad, err)
+		}
+	}
+	t.Setenv("TOMTLY_SECRET_KEY", testSecretKey)
 	// A cancelled context gives up at once instead of waiting out the two minutes, and never echoes the password.
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()
@@ -165,8 +174,9 @@ func testStore(t *testing.T) string {
 func TestResetAdminAgainstPostgres(t *testing.T) {
 	url := testStore(t)
 	t.Setenv("DATABASE_URL", url)
+	t.Setenv("TOMTLY_SECRET_KEY", testSecretKey)
 	ctx := context.Background()
-	st, err := store.Open(ctx, url)
+	st, err := store.Open(ctx, url, bytes.Repeat([]byte{0x11}, 32))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,6 +216,7 @@ func TestRunServesAndStopsOnSIGTERM(t *testing.T) {
 	addr := l.Addr().String()
 	l.Close()
 	t.Setenv("DATABASE_URL", url)
+	t.Setenv("TOMTLY_SECRET_KEY", testSecretKey)
 	t.Setenv("CONFIG_DIR", writeConfig(t, `{"timezone":"Europe/Warsaw"}`))
 	t.Setenv("DATA_DIR", t.TempDir())
 	t.Setenv("WEB_DIR", t.TempDir())
@@ -246,6 +257,7 @@ func TestRunServesAndStopsOnSIGTERM(t *testing.T) {
 func TestRunRefusesBadTrustedProxies(t *testing.T) {
 	url := testStore(t)
 	t.Setenv("DATABASE_URL", url)
+	t.Setenv("TOMTLY_SECRET_KEY", testSecretKey)
 	t.Setenv("CONFIG_DIR", writeConfig(t, `{}`))
 	t.Setenv("DATA_DIR", t.TempDir())
 	t.Setenv("TRUSTED_PROXIES", "not-a-cidr")

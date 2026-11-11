@@ -6,7 +6,6 @@ package extension
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -62,10 +61,9 @@ type Status struct {
 	Settings []SettingStatus  `json:"settings"`
 	Provides []string         `json:"provides"`
 	// Widgets are what it offers for Home.
-	Widgets   []WidgetInfo `json:"widgets,omitempty"`
-	Running   bool         `json:"running"`
-	Removable bool         `json:"removable"`
-	Error     string       `json:"error,omitempty"`
+	Widgets []WidgetInfo `json:"widgets,omitempty"`
+	Running bool         `json:"running"`
+	Error   string       `json:"error,omitempty"`
 	// Webhook is the path of a new webhook address. It's set only in the answer to the call that made it, since the
 	// service keeps just its hash.
 	Webhook string `json:"webhook,omitempty"`
@@ -78,7 +76,7 @@ type Status struct {
 	MarketUpdate *MarketUpdate `json:"marketUpdate,omitempty"`
 }
 
-// Manager runs the extensions in config.json. It is one adapter to the rest of the service.
+// Manager runs the extensions added on the page. It is one adapter to the rest of the service.
 type Manager struct {
 	configDir, cacheDir string // cacheDir holds unpacked code, which can always be recreated from the store
 	store               store.Store
@@ -91,10 +89,9 @@ type Manager struct {
 	returning           atomic.Bool   // memory is being handed back to the system
 	lastHeap            atomic.Uint64 // the watch's latest sample, so a call can note it without stopping the world
 
-	mu         sync.RWMutex
-	instances  []*instance
-	configured []entry // what config.json lists, including any the owner took out
-	ids        map[string]bool
+	mu        sync.RWMutex
+	instances []*instance
+	ids       map[string]bool
 
 	removedMu sync.RWMutex // not m.mu: Devices holds that one and asks about each device
 	removed   map[string]store.RemovedDevice
@@ -110,31 +107,12 @@ type entry struct {
 	Settings map[string]any `json:"settings"`
 }
 
-// Start begins running the extensions. A bad entry in config.json is an error, but an extension that fails to download
-// or load only shows on the page: tomtly has to work with no internet and with broken third-party code.
-func Start(ctx context.Context, entries []json.RawMessage, configDir, cacheDir string, st store.Store, plugins *plugin.Hub) (*Manager, error) {
+// Start begins running the extensions added on the page. One that fails to download or load only shows on the page:
+// tomtly has to work with no internet and with broken third-party code.
+func Start(ctx context.Context, configDir, cacheDir string, st store.Store, plugins *plugin.Hub) (*Manager, error) {
 	m := newManager(configDir, cacheDir, st, plugins)
 	m.ctx = ctx
 	m.own = findOwnNetwork(os.Getenv("DATABASE_URL"))
-	loading, cancel := context.WithTimeout(ctx, storeTimeout)
-	defer cancel()
-	removed, err := st.RemovedExtensions(loading)
-	if err != nil {
-		return nil, fmt.Errorf("removed extensions: %w", err) // starting anyway would bring back what the owner took out
-	}
-	for i, raw := range entries {
-		var e entry
-		if err := plugin.Decode(raw, &e); err != nil {
-			return nil, fmt.Errorf("extension %d: %w", i+1, err)
-		}
-		if e.Source == "" {
-			return nil, fmt.Errorf(`extension %d: needs a "source"`, i+1)
-		}
-		m.configured = append(m.configured, e)
-		if !slices.ContainsFunc(removed, func(r store.RemovedExtension) bool { return r.Source == e.Source }) {
-			m.add(ctx, e, false)
-		}
-	}
 	m.loadAdded(ctx)
 	go m.watchMemory(ctx, heapLimit(), memoryEvery)
 	return m, nil
@@ -144,24 +122,24 @@ func newManager(configDir, cacheDir string, st store.Store, plugins *plugin.Hub)
 	return &Manager{configDir: configDir, cacheDir: cacheDir, store: st, plugins: plugins, archives: githubArchives, ids: map[string]bool{}, removed: map[string]store.RemovedDevice{}}
 }
 
-func (m *Manager) add(ctx context.Context, e entry, removable bool) *instance {
+func (m *Manager) add(ctx context.Context, e entry) *instance {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.addLocked(ctx, e, removable)
+	return m.addLocked(ctx, e)
 }
 
-func (m *Manager) addLocked(ctx context.Context, e entry, removable bool) *instance {
-	inst := m.launch(ctx, e, removable)
+func (m *Manager) addLocked(ctx context.Context, e entry) *instance {
+	inst := m.launch(ctx, e)
 	m.instances = append(m.instances, inst)
 	return inst
 }
 
 // launch starts an instance running. The caller puts it in m.instances.
-func (m *Manager) launch(ctx context.Context, e entry, removable bool) *instance {
+func (m *Manager) launch(ctx context.Context, e entry) *instance {
 	ctx, cancel := context.WithCancel(ctx)
-	inst := &instance{manager: m, entry: e, removable: removable, cancel: cancel, done: make(chan struct{}), writes: make(chan pendingWrite, 16), actions: make(chan pendingAction, 16),
+	inst := &instance{manager: m, entry: e, cancel: cancel, done: make(chan struct{}), writes: make(chan pendingWrite, 16), actions: make(chan pendingAction, 16),
 		approve: make(chan struct{}, 1), hooks: make(chan pendingHook, 8), finds: make(chan pendingFind),
-		status: Status{Source: e.Source, Network: []string{}, Access: []string{}, Warnings: []string{}, Violations: []store.Violation{}, Settings: []SettingStatus{}, Provides: []string{}, Removable: removable}}
+		status: Status{Source: e.Source, Network: []string{}, Access: []string{}, Warnings: []string{}, Violations: []store.Violation{}, Settings: []SettingStatus{}, Provides: []string{}}}
 	go func() {
 		defer close(inst.done)
 		inst.run(ctx)
@@ -186,9 +164,6 @@ func (m *Manager) idClash(id string) error {
 		if s.ID != id {
 			continue
 		}
-		if !s.Removable {
-			return fmt.Errorf("%s is already installed, from %s in config.json. Remove that entry and restart to install this one instead", s.Name, s.Source)
-		}
 		where := s.Source
 		if strings.HasPrefix(where, "upload:") {
 			where = "an uploaded file"
@@ -206,7 +181,7 @@ func (m *Manager) release(id string) {
 	delete(m.ids, id)
 }
 
-// Statuses lists the extensions in the order of config.json.
+// Statuses lists the extensions in the order they were added.
 func (m *Manager) Statuses() []Status {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

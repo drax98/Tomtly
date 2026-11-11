@@ -34,15 +34,6 @@ type Violation struct {
 	Detail    string    `json:"detail"`
 }
 
-// RemovedExtension is one listed in config.json that the owner took out from the page. The file stays as it was.
-type RemovedExtension struct {
-	Source string `json:"source"`
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	// Kind is "integration" or "plugin", which decides the page it can be added back from.
-	Kind string `json:"kind"`
-}
-
 // Activity is where an extension's allowed traffic went: one row for each kind and destination.
 type Activity struct {
 	Extension   string    `json:"extension"`
@@ -104,11 +95,6 @@ type Store interface {
 	// Violations returns the newest first, up to limit.
 	Violations(ctx context.Context, extension string, limit int) ([]Violation, error)
 	ClearViolations(ctx context.Context, extension string) error
-
-	// RemovedExtensions lists them by source.
-	RemovedExtensions(ctx context.Context) ([]RemovedExtension, error)
-	AddRemovedExtension(ctx context.Context, extension RemovedExtension) error
-	DeleteRemovedExtension(ctx context.Context, source string) error
 
 	// RecordActivity adds to the row for this kind and destination, keeping its first and latest time.
 	RecordActivity(ctx context.Context, activity Activity) error

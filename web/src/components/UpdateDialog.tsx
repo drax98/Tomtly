@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { api, type ExtensionSetting, type ExtensionStatus } from "@/api";
+import { api, hiddenSetting, type ExtensionSetting, type ExtensionStatus } from "@/api";
 import { AccessList, Warnings } from "@/components/ExtensionParts";
 import { SettingField } from "@/components/SettingField";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,9 @@ import { ErrorText } from "@/components/PageHeader";
 
 const blank = (value: unknown) => value === undefined || value === null || (typeof value === "string" && value.trim() === "");
 
-/** What a field starts with. A secret always starts empty, and a required switch has only two answers, so off is one. */
+/** What a field starts with. A secret or a file always starts empty, and a required switch has only two answers, so off is one. */
 const startingValue = (s: ExtensionSetting) => {
-  if (s.type === "secret") return undefined;
+  if (hiddenSetting(s)) return undefined;
   return s.value ?? s.default ?? (s.type === "boolean" && s.required ? false : undefined);
 };
 

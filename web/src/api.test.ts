@@ -60,10 +60,6 @@ describe("api endpoints", () => {
     expect(calls.at(-1)).toEqual({ key: "POST /api/extensions/replace", body: { source: "s", newSource: "n", settings: undefined, access: ["x"] } });
     await api.newWebhookAddress("s");
     expect(calls.at(-1)).toEqual({ key: "POST /api/extensions/webhook-token", body: { source: "s" } });
-    await api.removedExtensions();
-    expect(calls.at(-1)?.key).toBe("GET /api/extensions/removed");
-    await api.restoreExtension("s");
-    expect(calls.at(-1)).toEqual({ key: "POST /api/extensions/restore", body: { source: "s" } });
     await api.removeExtension("a&b");
     expect(calls.at(-1)?.key).toBe("DELETE /api/extensions?source=a%26b");
     await api.setLive("heat ing", true);

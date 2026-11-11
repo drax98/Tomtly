@@ -22,9 +22,20 @@ async function control(verb: string, args: object = {}): Promise<string> {
   return response.output ?? "";
 }
 
+let scene = "devices";
+
+/** The settings this home's scene gives an extension, as someone would type them when adding it. */
+export function sceneSettings(source: string): Record<string, unknown> {
+  const { extensions = [] } = JSON.parse(readFileSync(join(here, "fixtures", "home", "configs", `${scene}.json`), "utf8"));
+  const listed = (extensions as { source: string; settings?: Record<string, unknown> }[]).find((e) => e.source === source);
+  if (!listed) throw new Error(`${source} isn't in the ${scene} scene`);
+  return listed.settings ?? {};
+}
+
 /** A new home: an empty database, fixture scripts, and the fake device back to how it started. Resolves when it answers. */
 export async function freshHome(options: { config?: string; market?: "on" | "off" | "wrong-key"; automations?: string } = {}) {
   await control("reset", options);
+  scene = options.config ?? "devices";
   await resetDevice();
   await serviceAnswers();
 }
@@ -60,6 +71,7 @@ export const marketReset = async () => { if (marketOn) await control("marketRese
 export const marketAdmin = (...args: string[]) => control("marketAdmin", { args });
 
 export const setupCode = () => control("setupCode");
+export const storedSettings = () => control("storedSettings");
 
 /** Submits one version of a fixture and leaves it pending. */
 export const submitListing = (repo: string, ref: string) => control("marketPublish", { repo, ref, submitOnly: true });

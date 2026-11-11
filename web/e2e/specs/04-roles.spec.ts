@@ -166,13 +166,3 @@ test("a token never does more than the person who made it", async ({ page }) => 
   expect(asked).toBe(403);
 });
 
-test("approving what waits is only offered to an administrator", async ({ page }) => {
-  await freshHome();
-  const api = await ownerApi();
-  await addPerson(api, person("editor"));
-  await open(page, person("editor"), "/integrations");
-  await expect(page.getByText("Only an administrator can approve it.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Approve access" })).toHaveCount(0);
-  await approve(api, FAKE_HOME);
-  await expect(page.getByText("Only an administrator can approve it.")).toBeHidden();
-});

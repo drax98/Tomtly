@@ -171,7 +171,7 @@ func (l *loaded) accessLabels(settings map[string]any) []string {
 	for _, key := range sorted(l.Settings) {
 		s := l.Settings[key]
 		if s.Type == "file" {
-			labels = append(labels, "Reads the file you choose for: "+s.Label)
+			labels = append(labels, "Holds the file you give it for: "+s.Label)
 		}
 		if s.Type == "secret" {
 			for _, entry := range s.SendTo {

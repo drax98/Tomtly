@@ -29,7 +29,6 @@ type Memory struct {
 	hooks        map[string]string
 	violations   []Violation
 	activity     []Activity
-	removedExt   []RemovedExtension
 	storage      map[string]map[string]json.RawMessage
 	packages     map[string][]byte
 	users        []User
@@ -235,36 +234,6 @@ func (m *Memory) ClearViolations(_ context.Context, extension string) error {
 		return m.Fail
 	}
 	m.violations = slices.DeleteFunc(m.violations, func(v Violation) bool { return v.Extension == extension })
-	return nil
-}
-
-func (m *Memory) RemovedExtensions(context.Context) ([]RemovedExtension, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.Fail != nil {
-		return nil, m.Fail
-	}
-	return slices.Clone(m.removedExt), nil
-}
-
-func (m *Memory) AddRemovedExtension(_ context.Context, e RemovedExtension) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.Fail != nil {
-		return m.Fail
-	}
-	m.removedExt = append(slices.DeleteFunc(m.removedExt, func(have RemovedExtension) bool { return have.Source == e.Source }), e)
-	slices.SortFunc(m.removedExt, func(a, b RemovedExtension) int { return strings.Compare(a.Source, b.Source) })
-	return nil
-}
-
-func (m *Memory) DeleteRemovedExtension(_ context.Context, source string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.Fail != nil {
-		return m.Fail
-	}
-	m.removedExt = slices.DeleteFunc(m.removedExt, func(e RemovedExtension) bool { return e.Source == source })
 	return nil
 }
 

@@ -62,7 +62,7 @@ func TestPostgresEdges(t *testing.T) {
 		t.Skip("TEST_DATABASE_URL is not set")
 	}
 	ctx := context.Background()
-	p, err := Open(ctx, url)
+	p, err := Open(ctx, url, testKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,11 +110,11 @@ func TestMemoryFailureIsReturnedEverywhere(t *testing.T) {
 }
 
 func TestOpenRefusesBadAddresses(t *testing.T) {
-	_, err := Open(context.Background(), "postgres://user:hunter2secret@localhost:notaport/db")
+	_, err := Open(context.Background(), "postgres://user:hunter2secret@localhost:notaport/db", testKey)
 	if err == nil || strings.Contains(err.Error(), "hunter2secret") {
 		t.Errorf("a malformed address must be refused without quoting its password: %v", err)
 	}
-	if _, err := Open(context.Background(), "postgres://user:pw@127.0.0.1:1/db"); err == nil {
+	if _, err := Open(context.Background(), "postgres://user:pw@127.0.0.1:1/db", testKey); err == nil {
 		t.Error("an unreachable database must fail at once, not later")
 	}
 }

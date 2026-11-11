@@ -121,7 +121,7 @@ func TestListenersCloseWhenTheExtensionStops(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	m := newManager(t.TempDir(), t.TempDir(), store.NewMemory(), hub(t))
 	t.Cleanup(func() { stopAll(m) })
-	inst := m.add(ctx, entry{Source: folder(t, `defineExtension({id:"a",name:"a",version:"1",access:{listen:[`+strconv.Itoa(port)+`]},background:{everySeconds:0.05,run(c){ sock = sock || c.udp.listen(`+strconv.Itoa(port)+`); }}}); let sock;`)}, false)
+	inst := m.add(ctx, entry{Source: folder(t, `defineExtension({id:"a",name:"a",version:"1",access:{listen:[`+strconv.Itoa(port)+`]},background:{everySeconds:0.05,run(c){ sock = sock || c.udp.listen(`+strconv.Itoa(port)+`); }}}); let sock;`)})
 	eventually(t, "it to listen", func() bool {
 		conn, err := net.ListenPacket("udp", ":"+strconv.Itoa(port))
 		if err == nil {

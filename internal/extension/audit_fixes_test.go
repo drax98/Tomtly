@@ -29,7 +29,7 @@ func TestASecretCantStopBeingOneAfterApproval(t *testing.T) {
 		t.Fatal(err)
 	}
 	settings := map[string]any{"token": "correct-horse-battery-staple"}
-	i := &instance{manager: m, removable: true, approve: make(chan struct{}, 1)}
+	i := &instance{manager: m, approve: make(chan struct{}, 1)}
 	i.describe(l, dir, settings)
 	if i.granted(ctx) {
 		t.Fatal("it runs with a key the owner approved as a secret now in plain view")
@@ -205,7 +205,7 @@ func TestAPublicHostCantDialAnythingPrivate(t *testing.T) {
 func TestReplaceRefusesAnotherOrigin(t *testing.T) {
 	m := pageManager(t)
 	write(t, m.configDir, "extensions/v2/"+entryFile, versionTwo)
-	inst := &instance{manager: m, entry: entry{Source: "github:owner/repo@v1"}, removable: true, status: Status{ID: "keep"}, cancel: func() {}, done: make(chan struct{})}
+	inst := &instance{manager: m, entry: entry{Source: "github:owner/repo@v1"}, status: Status{ID: "keep"}, cancel: func() {}, done: make(chan struct{})}
 	close(inst.done)
 	m.mu.Lock()
 	m.instances = append(m.instances, inst)

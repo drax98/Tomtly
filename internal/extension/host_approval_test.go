@@ -217,7 +217,7 @@ func TestAnAddressChangedInConfigAsksAgain(t *testing.T) {
 	m := newManager(t.TempDir(), t.TempDir(), shared, hub(t))
 	m.allowLoopback = true
 	t.Cleanup(func() { stopAll(m) })
-	m.add(ctx, entry{Source: dir, Settings: map[string]any{"host": first, "token": hostToken}}, false)
+	m.add(ctx, entry{Source: dir, Settings: map[string]any{"host": first, "token": hostToken}})
 	eventually(t, "it to wait", func() bool { return status(m).NeedsApproval })
 	if _, err := approveSeen(m, dir); err != nil {
 		t.Fatal(err)
@@ -227,7 +227,7 @@ func TestAnAddressChangedInConfigAsksAgain(t *testing.T) {
 	again := newManager(t.TempDir(), t.TempDir(), shared, hub(t))
 	again.allowLoopback = true
 	t.Cleanup(func() { stopAll(again) })
-	again.add(context.Background(), entry{Source: dir, Settings: map[string]any{"host": second, "token": hostToken}}, false)
+	again.add(context.Background(), entry{Source: dir, Settings: map[string]any{"host": second, "token": hostToken}})
 	waitsWithoutSending(t, again, secondHits, second)
 }
 

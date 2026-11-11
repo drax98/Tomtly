@@ -48,7 +48,10 @@ docker compose exec -T postgres pg_dump -U tomtly tomtly | gzip > tomtly-$(date 
 tar -czf tomtly-config-$(date +%F).tar.gz -C ~/.config tomtly
 ```
 
-Treat both like passwords: extension settings in the dump and `secrets/` in the folder are not encrypted. To restore,
+Extension settings, keys included, are encrypted in the dump with `TOMTLY_SECRET_KEY`. Back up your `.env` too, which
+holds it, and keep it apart from the dump: with both, anyone has your keys; without the key, the settings are lost and
+each extension has to be set up again (Tomtly refuses to start with the wrong key and says so). Everything else in the
+dump, such as accounts and logs, isn't encrypted, so treat it as private. To restore,
 start a fresh stack, stop `tomtly`, and load the dump with
 `gunzip -c tomtly-….sql.gz | docker compose exec -T postgres psql -U tomtly tomtly`.
 

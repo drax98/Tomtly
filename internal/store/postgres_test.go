@@ -152,7 +152,7 @@ func TestPostgresContract(t *testing.T) {
 		t.Skip("TEST_DATABASE_URL is not set")
 	}
 	ctx := context.Background()
-	p, err := Open(ctx, url)
+	p, err := Open(ctx, url, testKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -382,7 +382,7 @@ func TestPostgresPrunes(t *testing.T) {
 		t.Skip("TEST_DATABASE_URL is not set")
 	}
 	ctx := context.Background()
-	p, err := Open(ctx, url)
+	p, err := Open(ctx, url, testKey)
 	if err != nil {
 		t.Fatal(err)
 	}

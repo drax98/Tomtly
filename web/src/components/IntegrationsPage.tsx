@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddExtension } from "@/components/AddExtension";
-import { ExtensionDetails, ExtensionState, RemovedExtensions } from "@/components/ExtensionParts";
+import { ExtensionDetails, ExtensionState } from "@/components/ExtensionParts";
 import { IntegrationPage } from "@/components/IntegrationPage";
 import { EmptyState, PageHeader } from "@/components/PageHeader";
 import { useAuth } from "@/lib/auth";
@@ -62,7 +62,7 @@ function IntegrationList({ go }: { go: (page: Page, sub?: string) => void }) {
       {integrations === null ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><Skeleton className="h-48 rounded-xl" /><Skeleton className="h-48 rounded-xl" /></div>
       ) : integrations.length === 0 ? (
-        <EmptyState icon={<Plug />} title="No integrations yet">Add one with the button at the top of this page, or list one under extensions in your config.json.</EmptyState>
+        <EmptyState icon={<Plug />} title="No integrations yet">Add one with the button at the top of this page.</EmptyState>
       ) : (
         <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {integrations.map((integration) => (
@@ -70,7 +70,6 @@ function IntegrationList({ go }: { go: (page: Page, sub?: string) => void }) {
           ))}
         </div>
       )}
-      <RemovedExtensions kind="integration" onRestored={() => void refresh()} />
       {!can("extensions.manage") && <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">Adding or removing integrations needs an administrator.</p>}
     </>
   );

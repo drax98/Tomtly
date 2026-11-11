@@ -51,6 +51,10 @@ type Setting struct {
 	SecretFields []string `json:"secretFields"`
 }
 
+// hiddenType is a setting the page never sees again once given: a secret, or a file's contents. Left blank when editing,
+// it keeps its value.
+func hiddenType(t string) bool { return t == "secret" || t == "file" }
+
 // definition is the plain-data part of what an extension passes to defineExtension.
 type definition struct {
 	ID          string `json:"id"`
@@ -326,7 +330,7 @@ func stringify(vm *goja.Runtime, value goja.Value) (string, error) {
 	return out.String(), nil
 }
 
-// resolveSettings checks what config.json gave against what the extension declared, and applies defaults.
+// resolveSettings checks the settings given against what the extension declared, and applies defaults.
 func resolveSettings(declared map[string]Setting, given map[string]any) (map[string]any, error) {
 	out := map[string]any{}
 	for key := range given {
@@ -356,8 +360,8 @@ func resolveSettings(declared map[string]Setting, given map[string]any) (map[str
 			if valid && text == "" && s.Required {
 				return nil, fmt.Errorf("the setting %q is required: %s", key, s.Label)
 			}
-			if valid && s.Type == "file" && text != "" && !filepath.IsLocal(text) {
-				return nil, fmt.Errorf("the setting %q must be a path inside your config folder, like secrets/devices.json", key)
+			if valid && s.Type == "file" && len(text) > maxSettingFile {
+				return nil, fmt.Errorf("the setting %q is over 1 MiB", key)
 			}
 		}
 		if !valid {

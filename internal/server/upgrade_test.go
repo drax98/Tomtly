@@ -37,7 +37,7 @@ func TestUpdateRoutesNeverShowASecret(t *testing.T) {
 	g := newRig(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	m, err := extension.Start(ctx, nil, config, t.TempDir(), g.st, plugin.NewHub())
+	m, err := extension.Start(ctx, config, t.TempDir(), g.st, plugin.NewHub())
 	if err != nil {
 		t.Fatal(err)
 	}

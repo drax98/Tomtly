@@ -8,7 +8,7 @@ import { ExtensionDetails } from "./ExtensionParts";
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const found: ExtensionStatus = {
-  source: "github:a/b@v1", id: "tides", name: "Tides", version: "1.0.0", access: ["network: api.example.com"], provides: ["data"], running: false, removable: false,
+  source: "github:a/b@v1", id: "tides", name: "Tides", version: "1.0.0", access: ["network: api.example.com"], provides: ["data"], running: false,
   settings: [
     { key: "apiKey", label: "API key", type: "secret", required: true, help: "From example.com", set: false },
     { key: "limit", label: "Limit", type: "number", required: false, default: 5, set: true },
@@ -155,14 +155,13 @@ describe("ExtensionDetails", () => {
     expect(screen.getByText("No access to anything outside itself")).toBeTruthy();
   });
 
-  it("says a required setting is missing, and offers removal for one from config.json too", async () => {
+  it("says a required setting is missing, and removing it says its saved settings go too", async () => {
     const remove = vi.spyOn(api, "removeExtension").mockResolvedValue({});
     const onRemoved = vi.fn();
     render(<WithRole><ExtensionDetails extension={found} onRemoved={onRemoved} /></WithRole>);
     expect(screen.getByText(/^Missing: /)).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Edit settings" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Remove" }));
-    expect(await screen.findByText(/stay in config.json/)).toBeTruthy();
+    expect(await screen.findByText(/its saved settings \(such as keys\) are deleted/)).toBeTruthy();
     fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(remove).toHaveBeenCalledWith(found.source));
     expect(onRemoved).toHaveBeenCalled();
@@ -192,7 +191,7 @@ describe("ExtensionDetails", () => {
   });
 
   it("leaves out approve and remove for people who can't manage extensions, but still shows the request", () => {
-    const pending = { ...found, needsApproval: true, removable: true };
+    const pending = { ...found, needsApproval: true };
     render(<WithRole role="editor"><ExtensionDetails extension={pending} onRemoved={vi.fn()} /></WithRole>);
     expect(screen.getByText("Waiting for your OK")).toBeTruthy();
     expect(screen.getByText("Only an administrator can approve it.")).toBeTruthy();
@@ -203,7 +202,7 @@ describe("ExtensionDetails", () => {
 
 describe("ExtensionDetails changes", () => {
   const mine: ExtensionStatus = {
-    ...found, source: "upload:abc", removable: true, provides: ["data", "webhooks"], access: ["Receive messages from outside"],
+    ...found, source: "upload:abc", provides: ["data", "webhooks"], access: ["Receive messages from outside"],
     settings: [
       { key: "apiKey", label: "API key", type: "secret", required: true, set: true },
       { key: "city", label: "City", type: "string", required: false, set: true, value: "Warsaw" },
@@ -227,6 +226,29 @@ describe("ExtensionDetails changes", () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
   });
 
+  it("keeps a file that isn't chosen again, and sends the text of one that is, never showing either", async () => {
+    const withFile: ExtensionStatus = { ...mine, settings: [...mine.settings, { key: "devices", label: "Devices file", type: "file", required: true, set: true }] };
+    const update = vi.spyOn(api, "updateExtensionSettings").mockResolvedValue(withFile);
+    render(<WithRole><ExtensionDetails extension={withFile} onRemoved={vi.fn()} /></WithRole>);
+    fireEvent.click(screen.getByRole("button", { name: "Edit settings" }));
+    const picker = (await screen.findByLabelText("Devices file")) as HTMLInputElement;
+    expect(picker.type).toBe("file");
+    expect(picker.required).toBe(false);
+    expect(screen.getByText("Set. Choose a file only to replace it.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(update).toHaveBeenCalledWith("upload:abc", { city: "Warsaw", metric: true }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit settings" }));
+    const big = new File(["x".repeat((1 << 20) + 1)], "big.json");
+    fireEvent.change(await screen.findByLabelText("Devices file"), { target: { files: [big] } });
+    expect(await screen.findByText("big.json is over 1 MiB.")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Devices file"), { target: { files: [new File(['[{"key":"k"}]'], "tuya.json")] } });
+    expect(await screen.findByText("tuya.json is read and will be kept encrypted.")).toBeTruthy();
+    expect(screen.queryByText('[{"key":"k"}]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(update).toHaveBeenLastCalledWith("upload:abc", { city: "Warsaw", metric: true, devices: '[{"key":"k"}]' }));
+  });
+
   it("sends a new secret, and clears a blank setting", async () => {
     const update = vi.spyOn(api, "updateExtensionSettings").mockResolvedValue(mine);
     render(<WithRole><ExtensionDetails extension={mine} onRemoved={vi.fn()} /></WithRole>);
@@ -246,9 +268,9 @@ describe("ExtensionDetails changes", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
   });
 
-  it("offers editing only for what was added here, to someone who can manage", () => {
-    const { rerender } = render(<WithRole><ExtensionDetails extension={{ ...mine, removable: false }} onRemoved={vi.fn()} /></WithRole>);
-    for (const name of ["Edit settings", "Upload new version", "New webhook address"]) expect(screen.queryByRole("button", { name })).toBeNull();
+  it("offers editing only to someone who can manage", () => {
+    const { rerender } = render(<WithRole><ExtensionDetails extension={mine} onRemoved={vi.fn()} /></WithRole>);
+    for (const name of ["Edit settings", "Upload new version", "New webhook address"]) expect(screen.getByRole("button", { name })).toBeTruthy();
     rerender(<WithRole role="editor"><ExtensionDetails extension={mine} onRemoved={vi.fn()} /></WithRole>);
     for (const name of ["Edit settings", "Upload new version", "New webhook address"]) expect(screen.queryByRole("button", { name })).toBeNull();
   });
@@ -371,7 +393,7 @@ describe("what comes straight from GitHub", () => {
 });
 
 describe("ExtensionDetails, from the marketplace", () => {
-  const added = (source: string): ExtensionStatus => ({ ...found, source, running: true, removable: true, settings: [] });
+  const added = (source: string): ExtensionStatus => ({ ...found, source, running: true, settings: [] });
 
   it("links back to the listing", () => {
     window.history.pushState(null, "", "/plugins");
@@ -393,7 +415,7 @@ describe("ExtensionDetails, from the marketplace", () => {
 
 describe("ExtensionDetails marketplace update", () => {
   const installed: ExtensionStatus = {
-    ...found, source: "market:tides@1.0.0#" + "a".repeat(64), removable: true,
+    ...found, source: "market:tides@1.0.0#" + "a".repeat(64),
     marketUpdate: { version: "1.2.0", steps: [{ version: "1.1.0", note: "New units." }, { version: "1.2.0", note: "It needs a token now.", ask: ["token"] }] },
   };
 

@@ -40,10 +40,10 @@ func TestMemoryBombsAreStopped(t *testing.T) {
 		"arrays": `const a = []; while (true) { a.push(new Array(1e6).fill(0)); }`,
 	}
 	for id, code := range bombs {
-		m.add(ctx, entry{Source: folder(t, `defineExtension({id:"`+id+`",name:"b",version:"1",data:{fetch(){`+code+`}}});`)}, false)
+		m.add(ctx, entry{Source: folder(t, `defineExtension({id:"`+id+`",name:"b",version:"1",data:{fetch(){`+code+`}}});`)})
 	}
 	// Another extension, running all the while. It is rarely inside a call when the watchdog fires.
-	m.add(ctx, entry{Source: folder(t, `defineExtension({id:"fine",name:"f",version:"1",background:{everySeconds:0.05,run(c){ n++; c.publish(n); }}}); let n = 0;`)}, false)
+	m.add(ctx, entry{Source: folder(t, `defineExtension({id:"fine",name:"f",version:"1",background:{everySeconds:0.05,run(c){ n++; c.publish(n); }}}); let n = 0;`)})
 	go m.watchMemory(ctx, limit, 20_000_000)
 	var peak atomic.Uint64
 	go func() {

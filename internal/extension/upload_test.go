@@ -155,14 +155,8 @@ func TestRemoveKeepsAPackageAnotherInstanceUses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	m.add(m.ctx, entry{Source: got.Source}, true)
-	m.add(m.ctx, entry{Source: got.Source}, false) // from config.json: not removable
-	m.mu.Lock()
-	first := m.instances[len(m.instances)-2]
-	m.mu.Unlock()
-	if !first.removable {
-		t.Fatal("the page's one should be first")
-	}
+	m.add(m.ctx, entry{Source: got.Source})
+	m.add(m.ctx, entry{Source: got.Source})
 	if err := m.Remove(got.Source); err != nil {
 		t.Fatal(err)
 	}

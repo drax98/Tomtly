@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext, type Locator, type Page, request as playwrightRequest } from "@playwright/test";
+import { sceneSettings } from "./stack";
 
 export interface Person {
   username: string;
@@ -32,12 +33,17 @@ export async function addPerson(api: APIRequestContext, who: Person) {
   await ok(api.post("/api/users", { data: { username: who.username, password: who.password, role: who.role } }));
 }
 
-/** Approves exactly what it asks for now: the service refuses an approval that doesn't say what was shown. */
+/** Adds one of the scene's extensions with its settings, or approves one that is waiting again, allowing exactly what it
+ * asks for now: the service refuses an approval that doesn't say what was shown. */
 export async function approve(api: APIRequestContext, source: string) {
   const extensions: { source: string; access: string[] }[] = await (await api.get("/api/extensions")).json();
-  const access = extensions.find((e) => e.source === source)?.access;
-  expect(access, `${source} isn't loaded`).toBeDefined();
-  await ok(api.post("/api/extensions/approve", { data: { source, access } }));
+  const waiting = extensions.find((e) => e.source === source);
+  if (waiting) {
+    await ok(api.post("/api/extensions/approve", { data: { source, access: waiting.access } }));
+    return;
+  }
+  const { access } = (await (await ok(api.post("/api/extensions/inspect", { data: { source } }))).json()) as { access: string[] };
+  await ok(api.post("/api/extensions", { data: { source, settings: sceneSettings(source), access } }));
 }
 
 /** The owner, every role, and fake-home approved and reporting. */
@@ -111,4 +117,22 @@ export async function approveEverything(scriptCard: Locator) {
     if (await asks.count()) await asks.first().click({ timeout: 2_000 });
     await expect(asks).toHaveCount(0, { timeout: 1_500 });
   }).toPass({ timeout: 30_000 });
+}
+
+/** Opens Add, then From local files, and checks a folder of the config folder. The dialog is left showing what it asks
+ * for, for the test to read, fill in and allow. */
+export async function addFolder(page: Page, what: "plugin" | "integration", folder: string): Promise<Locator> {
+  await page.getByRole("button", { name: new RegExp(`^Add ${what}`) }).click();
+  await page.getByRole("menuitem", { name: /From local files/ }).click();
+  const dialog = page.getByRole("dialog", { name: `Add a${what === "integration" ? "n" : ""} ${what} from local files` });
+  await dialog.getByLabel("Or use a folder in your config folder").fill(folder);
+  await dialog.getByRole("button", { name: "Check" }).click();
+  return dialog;
+}
+
+/** Allows what the dialog shows and waits for the extension's card to say it runs. */
+export async function allowAndAdd(page: Page, dialog: Locator, name: string) {
+  await dialog.getByRole("button", { name: `Allow this access and add ${name}` }).click();
+  await expect(dialog).toBeHidden();
+  await expect(card(page, name).getByText("Running", { exact: true })).toBeVisible();
 }

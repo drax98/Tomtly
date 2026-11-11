@@ -233,7 +233,6 @@ test("removing one added on the page: its settings go too, and it isn't offered 
   await expect(confirmDialog(page)).toContainText("its saved settings (such as keys) are deleted");
   await pressConfirm(page, "Remove");
   await expect(page.getByRole("heading", { name: "No plugins yet" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Removed" })).toHaveCount(0);
 });
 
 test("a webhook's address is shown once and a message reaches the plugin", async ({ page, playwright }) => {

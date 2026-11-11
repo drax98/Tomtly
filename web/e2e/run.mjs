@@ -33,7 +33,7 @@ if (!existsSync(installed) || JSON.parse(readFileSync(installed, "utf8")).versio
 // The public copy of this repository has no marketplace service: then every home runs without one, and specs that need
 // one skip themselves.
 const withMarket = existsSync(join(here, "..", "..", "Dockerfile.marketplace"));
-const vars = { E2E_PLAYWRIGHT_VERSION: version, E2E_CONFIG: "devices", E2E_MARKET: withMarket ? "on" : "off", E2E_MARKET_URL: "", E2E_MARKET_KEY: "", E2E_MARKET_SIGNING_KEY: "", E2E_MARKET_APPROVAL_KEY: "" };
+const vars = { E2E_PLAYWRIGHT_VERSION: version, E2E_MARKET: withMarket ? "on" : "off", E2E_MARKET_URL: "", E2E_MARKET_KEY: "", E2E_MARKET_SIGNING_KEY: "", E2E_MARKET_APPROVAL_KEY: "" };
 let publicKey = "";
 let otherPublicKey = "";
 let approvalKey = ""; // goes to the command by standard input, as the marketplace wants: never in a container's environment
@@ -49,6 +49,12 @@ function compose(command, { capture = false, check = true, input, binary = false
   });
   if (check && result.status !== 0) throw new Error(`docker compose ${command.join(" ")} failed:\n${result.stderr}`);
   return binary ? result : String(result.stdout ?? "").trim();
+}
+
+/** The home's config.json is its scene without the extensions: those are added on the page or through the API, as for real. */
+function writeConfig(scene) {
+  const { extensions, ...config } = JSON.parse(readFileSync(join(here, "fixtures", "home", "configs", `${scene}.json`), "utf8"));
+  writeFileSync(join(run, "config.json"), JSON.stringify(config));
 }
 
 function freshAutomations(set) {
@@ -72,7 +78,7 @@ const VERBS = {
     compose(["rm", "-sf", "tomtly"]);
     compose(["exec", "-T", "postgres", "psql", "-q", "-U", "tomtly", "-d", "postgres", "-c", "DROP DATABASE IF EXISTS tomtly WITH (FORCE)", "-c", "CREATE DATABASE tomtly"]);
     freshAutomations(set);
-    vars.E2E_CONFIG = config;
+    writeConfig(config);
     if (!withMarket) market = "off";
     vars.E2E_MARKET_URL = market === "off" ? "" : "http://marketplace:8100";
     vars.E2E_MARKET_KEY = marketKeys[market]();
@@ -112,6 +118,10 @@ const VERBS = {
     VERBS.restart({ service: "marketplace" });
   },
   /** The marketplace's own admin command, then a restart so the page sees it now and not within its 20 second poll. */
+  /** What the database holds for extensions' settings, as stored, to prove it isn't readable there. */
+  storedSettings() {
+    return compose(["exec", "-T", "postgres", "psql", "-q", "-t", "-U", "tomtly", "-d", "tomtly", "-c", "SELECT coalesce(settings::text, '') || encode(sealed, 'escape') FROM added_extensions"], { capture: true });
+  },
   marketAdmin({ args: admin }) {
     if (!["reject", "withdraw", "suspend", "unsuspend", "list", "pending", "audit", "reviews"].includes(admin[0])) throw new Error(`no such command: ${admin[0]}`);
     const output = compose(["exec", "-T", "marketplace", "/marketplace", ...admin], { capture: true });
@@ -178,6 +188,7 @@ try {
   mkdirSync(controlDir, { recursive: true });
   chmodSync(controlDir, 0o777);
   freshAutomations("default");
+  writeConfig("devices");
 
   if (!noBuild) {
     say("building images one at a time");

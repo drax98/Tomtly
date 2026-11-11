@@ -43,7 +43,7 @@ type pendingWrite struct {
 	value          any
 }
 
-// instance is one extension from config.json.
+// instance is one running extension.
 const writeErrorShown = 5 * time.Minute
 
 type instance struct {
@@ -55,7 +55,6 @@ type instance struct {
 	entry            entry
 	writes           chan pendingWrite
 	actions          chan pendingAction
-	removable        bool
 	cancel           context.CancelFunc
 	done             chan struct{}
 
@@ -203,17 +202,6 @@ func (i *instance) start(ctx context.Context) error {
 	defer i.manager.release(l.ID)
 	settings, settingsErr := resolveSettings(l.Settings, i.entry.Settings)
 	i.describe(l, dir, settings)
-	// From here on a file setting holds its contents. describe keeps the path, which is what the page may see.
-	values, fileErr := readFileSettings(i.manager.configDir, l.Settings, settings)
-	if settingsErr == nil {
-		settingsErr = fileErr
-	}
-	if fileErr == nil {
-		i.mu.Lock()
-		i.bindings = bindingsFor(l, values)
-		i.mu.Unlock()
-		settings = values
-	}
 	l.violate = i.violate
 	i.resumeViolations(ctx, l.ID) // a restart must not reset the count toward being stopped
 	for _, v := range l.early {
@@ -271,7 +259,7 @@ func (i *instance) start(ctx context.Context) error {
 
 func (i *instance) describe(l *loaded, dir string, settings map[string]any) {
 	status := definedStatus(i.entry.Source, l, settings)
-	status.Running, status.Removable = true, i.removable
+	status.Running = true
 	i.mu.Lock()
 	defer i.mu.Unlock()
 	i.dir, i.bindings = dir, bindingsFor(l, settings)
@@ -292,8 +280,8 @@ func definedStatus(source string, l *loaded, settings map[string]any) Status {
 		if s.Default != nil {
 			set = true
 		}
-		if s.Type == "secret" {
-			given = nil // the page is never told a secret
+		if hiddenType(s.Type) {
+			given = nil // the page is never told a secret or a file's contents
 		}
 		status.Settings = append(status.Settings, SettingStatus{key, s.Label, s.Type, s.Required, s.Help, s.Default, set, given})
 	}
