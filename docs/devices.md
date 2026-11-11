@@ -4,8 +4,8 @@ An integration connects a family of devices. Everything above it, the API, the p
 device model below, so a new integration gets all of them for free.
 
 Every integration is an [extension](extensions.md). For a LAN protocol over TCP or UDP, start from
-[tomtly-tuya](https://github.com/drax98/tomtly-tuya), [tomtly-xiaomi](https://github.com/drax98/tomtly-xiaomi) or
-[tomtly-gree](https://github.com/drax98/tomtly-gree).
+[tuya](https://github.com/drax98/tomtly-extensions/tree/main/tuya), [xiaomi](https://github.com/drax98/tomtly-extensions/tree/main/xiaomi) or
+[gree](https://github.com/drax98/tomtly-extensions/tree/main/gree).
 
 ## The device model
 

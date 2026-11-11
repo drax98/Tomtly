@@ -165,7 +165,7 @@ access: {
 ```
 
 `sockets` with `lan` also gives `ctx.udp.scan` and `ctx.tcp.scan`, which probe up to 254 private addresses in parallel, for
-finding a device whose address changed: [tomtly-tuya](https://github.com/drax98/tomtly-tuya), [tomtly-xiaomi](https://github.com/drax98/tomtly-xiaomi) and [tomtly-gree](https://github.com/drax98/tomtly-gree) do it.
+finding a device whose address changed: [tuya](https://github.com/drax98/tomtly-extensions/tree/main/tuya), [xiaomi](https://github.com/drax98/tomtly-extensions/tree/main/xiaomi) and [gree](https://github.com/drax98/tomtly-extensions/tree/main/gree) do it.
 
 Leave out what you don't need, which is the point: people read this list before they let your code run. Asking for more
 in a later version stops your extension until they approve it.
@@ -283,13 +283,13 @@ aren't prompted: list what changed in your README for them.
 ### Develop it
 
 1. Put your folder in `extensions/` in your config folder, and add `{ "source": "./extensions/your-id" }` to `config.json`.
-2. Copy [`sdk/extension.d.ts`](../sdk/extension.d.ts) into an `sdk/` folder next to it, and a `tsconfig.json` like [tomtly-weather's](https://github.com/drax98/tomtly-weather/blob/main/tsconfig.json), for
+2. Copy [`sdk/extension.d.ts`](../sdk/extension.d.ts) into an `sdk/` folder next to it, and a `tsconfig.json` like [weather's](https://github.com/drax98/tomtly-extensions/blob/main/weather/tsconfig.json), for
    autocomplete and type checks. The service doesn't check types when it loads your code, so run `tsc` or use an editor.
 3. Restart the service after each change with `docker compose restart`.
 4. Problems show on your extension's card on the Integrations or Plugins page, and `ctx.log` writes to `docker compose logs`.
    To see your data, open the plugin's **Show data**, or `curl localhost:8099/api/devices`.
 
-Start from [tomtly-weather](https://github.com/drax98/tomtly-weather) for a plugin. For a LAN protocol over TCP or UDP, [tomtly-tuya](https://github.com/drax98/tomtly-tuya), [tomtly-xiaomi](https://github.com/drax98/tomtly-xiaomi) and [tomtly-gree](https://github.com/drax98/tomtly-gree) are complete examples. Each is laid out the same way: `extension.ts` at the top, `sdk/extension.d.ts`, tests in `test/` against a mock of the host (`test/harness.ts`), run with `pnpm test`, and a CI workflow. Copy one to start.
+Start from [weather](https://github.com/drax98/tomtly-extensions/tree/main/weather) for a plugin. For a LAN protocol over TCP or UDP, [tuya](https://github.com/drax98/tomtly-extensions/tree/main/tuya), [xiaomi](https://github.com/drax98/tomtly-extensions/tree/main/xiaomi) and [gree](https://github.com/drax98/tomtly-extensions/tree/main/gree) are complete examples. They share one repository, [tomtly-extensions](https://github.com/drax98/tomtly-extensions): a folder per extension with `extension.ts` at its top, `sdk/extension.d.ts` once at the root, tests in `test/<folder>/` against a mock of the host (`test/harness.ts`), run with `pnpm test`, and tags like `tuya-v1.2.2`. Copy its layout to start.
 
 ### Give scripts types
 

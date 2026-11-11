@@ -5,7 +5,7 @@
 
 One local service for every smart device at home. It talks to devices directly over your LAN, gives them one API and one control panel, and runs your automations as TypeScript, so you don't depend on each vendor's cloud or app.
 
-- **Integrations for any device.** Smart Life (Tuya), Xiaomi Home and Gree come as extensions in their own repositories, and anything else is a TypeScript extension you write.
+- **Integrations for any device.** Smart Life (Tuya), Xiaomi Home and Gree come as extensions from [their own repository](https://github.com/drax98/tomtly-extensions), and anything else is a TypeScript extension you write.
 - **Automations as code.** Scripts run inside the service with nothing else to install, and start in a shadow mode that changes nothing until you've seen they do the right thing.
 - **Extensions from anywhere.** Add devices or outside data like the weather from GitHub, a local folder or a file you upload, and build your own in TypeScript with the [SDK](docs/extensions.md). They run sandboxed, and only get the access they declare and you approve.
 - **Login and roles.** Accounts with viewer, operator, editor and admin roles, API tokens and an audit log.
@@ -53,18 +53,18 @@ Set `TOMTLY_DIR` in `.env` to keep it elsewhere. Values like `${TOKEN}` in `conf
 
 ## Integrations
 
-Every integration and plugin is an extension in a repository of its own. Add one on the **Integrations** or **Plugins**
+Every integration and plugin is an extension. The official ones are folders of [drax98/tomtly-extensions](https://github.com/drax98/tomtly-extensions). Add one on the **Integrations** or **Plugins**
 page (**From a GitHub repo**, or from the marketplace's website, whose **Get** opens it here to install), or list it in
 `config.json` under `extensions`, as [examples/config.json](examples/config.json) does.
 
-| Repository | Devices | Protocol |
+| Folder | Devices | Protocol |
 |---|---|---|
-| [`tomtly-tuya`](https://github.com/drax98/tomtly-tuya) (Smart Life) | Tuya Zigbee and Wi-Fi | LAN port 6668, protocols 3.1 to 3.5 |
-| [`tomtly-xiaomi`](https://github.com/drax98/tomtly-xiaomi) (Xiaomi Home) | Any Wi-Fi MIoT device from its spec, older Yeelight, Philips, Zhimi, Chuangmi and Aqara gateway models, Roborock vacuums | miIO, UDP port 54321 |
-| [`tomtly-gree`](https://github.com/drax98/tomtly-gree) | Gree-based ACs such as Sinclair and EWPE Smart | UDP port 7000 |
-| [`tomtly-weather`](https://github.com/drax98/tomtly-weather) | A plugin: weather and forecast from Open-Meteo | HTTPS |
+| [`tuya`](https://github.com/drax98/tomtly-extensions/tree/main/tuya) (Smart Life) | Tuya Zigbee and Wi-Fi | LAN port 6668, protocols 3.1 to 3.5 |
+| [`xiaomi`](https://github.com/drax98/tomtly-extensions/tree/main/xiaomi) (Xiaomi Home) | Any Wi-Fi MIoT device from its spec, older Yeelight, Philips, Zhimi, Chuangmi and Aqara gateway models, Roborock vacuums | miIO, UDP port 54321 |
+| [`gree`](https://github.com/drax98/tomtly-extensions/tree/main/gree) | Gree-based ACs such as Sinclair and EWPE Smart | UDP port 7000 |
+| [`weather`](https://github.com/drax98/tomtly-extensions/tree/main/weather) | A plugin: weather and forecast from Open-Meteo | HTTPS |
 
-Each repository's README says how to get its credentials, what it was tested against, and how it finds a device whose
+Each folder's README says how to get its credentials, what it was tested against, and how it finds a device whose
 address changed. Device ids are `<extension id>:<id>`, such as `tuya:<id>`, `xiaomi:<did>` or `gree:<mac>`. To write
 your own, see [docs/extensions.md](docs/extensions.md). `config.json` no longer accepts `adapters` or `plugins`, and the
 service refuses to start if they are there.
@@ -86,7 +86,7 @@ Extensions add devices, data or actions without changing this repo. The integrat
 
 ```json
 "extensions": [
-  { "source": "github:drax98/tomtly-weather@v1.1.0", "settings": { "latitude": 52.23, "longitude": 21.01 } },
+  { "source": "github:drax98/tomtly-extensions/weather@weather-v1.1.0", "settings": { "latitude": 52.23, "longitude": 21.01 } },
   { "source": "./extensions/my-own", "settings": {} }
 ]
 ```
@@ -193,7 +193,7 @@ The Tuya extension's protocol is ported to TypeScript from [TinyTuya](https://gi
 
 | | |
 |---|---|
-| [Integrations](#integrations) | Tuya, Xiaomi, Gree and weather, each in its own repository |
+| [Integrations](#integrations) | Tuya, Xiaomi, Gree and weather, in [tomtly-extensions](https://github.com/drax98/tomtly-extensions) |
 | [Automations](docs/automations.md) | Writing scripts, shadow mode, widgets |
 | [Extensions](docs/extensions.md) | Building your own integration or plugin, with the [API reference](docs/extension-api.md) and [style guide](docs/extension-style-guide.md) |
 | [Devices](docs/devices.md) and [plugins](docs/plugins.md) | What a device and a plugin extension look like |

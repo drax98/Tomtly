@@ -6,7 +6,7 @@ like.
 ## Before you start
 
 - **A new integration or plugin** usually doesn't belong in this repo. Build it as an extension
-  ([docs/extensions.md](docs/extensions.md)) in a repository of its own, like the official ones (`drax98/tomtly-tuya` and the others), and upload it to the marketplace, where it's reviewed and listed on its own.
+  ([docs/extensions.md](docs/extensions.md)) in a repository of its own (the official ones are folders of [tomtly-extensions](https://github.com/drax98/tomtly-extensions)), and upload it to the marketplace, where it's reviewed and listed on its own.
 - **A bug** goes in an issue first, with what you did, what happened and what you expected. Leave out device keys, tokens and
   addresses; the service never needs them to be reproduced.
 - **A bigger change** (a new page, a new kind of access for extensions, anything in the sandbox or the marketplace
