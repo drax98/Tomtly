@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, describe, expect, it } from "vitest";
 import type { AutomationStatus, DataPoint, Device, ExtensionStatus, RenderedWidget } from "@/api";
 import { mockService, WithRole } from "@/test/helpers";
-import { HomePage, problems } from "./HomePage";
+import { CLEARED_FOR_MS, HomePage, problems, sortCleared } from "./HomePage";
 
 const dp = (code: string, value: number | boolean | null, over: Partial<DataPoint> = {}): DataPoint => ({ dp: code, code, type: "Integer", values: {}, scale: 0, writable: false, value, ...over });
 const device = (id: string, name: string, over: Partial<Device> = {}): Device => ({ id, adapter: "tuya", name, kind: "light", category: "", product: "", online: true, dps: [], ...over });
@@ -37,6 +37,44 @@ describe("problems", () => {
     expect(list).toContain("warn: Door's battery is low");
     expect(list).toContain("warn: A device isn't doing what heating wants");
     expect(list.join()).not.toContain("old");
+  });
+});
+
+describe("clearing what needs you", () => {
+  const loaded = { devices: true, extensions: true, automations: true };
+  const now = Date.parse("2026-11-04T12:00:00Z");
+  const auto = (time: string): AutomationStatus => ({ scripts: [], events: [{ time, script: "heating", kind: "mismatch", message: "AC power" }] });
+
+  it("hides a cleared problem while it stays the same", () => {
+    const list = problems([gone], [], auto("2026-11-04T11:00:00Z"), now);
+    const cleared = Object.fromEntries(list.map((p) => [p.stamp, now]));
+    expect(sortCleared(list, cleared, loaded, now + 1000).shown).toEqual([]);
+  });
+
+  it("shows it again when it happens again: a newer event, another detail, or gone and back", () => {
+    const first = problems([gone, sensor], [], auto("2026-11-04T11:00:00Z"), now);
+    const cleared = Object.fromEntries(first.map((p) => [p.stamp, now]));
+    // A newer mismatch and a lower battery are new occurrences.
+    const later = problems([gone, device("s", "Door", { dps: [dp("battery_percentage", 8)] })], [], auto("2026-11-04T11:30:00Z"), now);
+    expect(sortCleared(later, cleared, loaded, now).shown.map((p) => p.text).sort()).toEqual(["A device isn't doing what heating wants", "Door's battery is low"]);
+    // The plug came back online: its clearing is forgotten, so going offline again shows.
+    const { keep } = sortCleared(problems([sensor], [], null, now), cleared, loaded, now);
+    expect(Object.keys(keep).some((k) => k.startsWith("o-g"))).toBe(false);
+    expect(sortCleared(problems([gone], [], null, now), keep, loaded, now).shown.map((p) => p.text)).toEqual(["Plug is offline"]);
+  });
+
+  it("forgets nothing while that kind of data is still loading", () => {
+    const list = problems([gone], [ext({ name: "Tuya", needsApproval: true })], auto("2026-11-04T11:00:00Z"), now);
+    const cleared = Object.fromEntries(list.map((p) => [p.stamp, now]));
+    const { keep } = sortCleared(problems([], null, null, now), cleared, { devices: false, extensions: false, automations: false }, now);
+    expect(Object.keys(keep).length).toBe(3);
+  });
+
+  it("brings a cleared problem back after a day if it's still there", () => {
+    const list = problems([gone], [], null, now);
+    const cleared = Object.fromEntries(list.map((p) => [p.stamp, now]));
+    expect(sortCleared(list, cleared, loaded, now + CLEARED_FOR_MS - 1).shown).toEqual([]);
+    expect(sortCleared(list, cleared, loaded, now + CLEARED_FOR_MS).shown.map((p) => p.text)).toEqual(["Plug is offline"]);
   });
 });
 
@@ -83,6 +121,25 @@ describe("HomePage", () => {
     const heating = within(screen.getByRole("list", { name: "Heating now" }));
     expect(heating.getByText("Salon")).toBeTruthy();
     expect(heating.getByText(/Heating to 21/)).toBeTruthy();
+  });
+
+  it("clears problems one by one or all at once, and shows one again when it happens again", async () => {
+    localStorage.clear();
+    mockService({ "GET /api/widgets": () => ({ body: { layout: ["builtin/needs-you"], widgets: [] } }), "GET /api/extensions": () => ({ body: [] }), "GET /api/automations": () => ({ body: { scripts: [], events: [] } }) });
+    const { rerender } = render(<WithRole role="admin"><HomePage devices={[sensor, gone, device("x", "Lamp", { online: false })]} rooms={{}} write={noop} /></WithRole>);
+    const needs = within(await screen.findByRole("list", { name: "What needs you" }));
+    fireEvent.click(needs.getByRole("button", { name: "Clear: Plug is offline" }));
+    expect(needs.queryByText("Plug is offline")).toBeNull();
+    expect(needs.getByText("Lamp is offline")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(await screen.findByText(/Nothing new needs you/)).toBeTruthy();
+    // The plug comes back online, then drops off again: it shows again. The lamp, still offline, stays cleared.
+    rerender(<WithRole role="admin"><HomePage devices={[sensor, device("g", "Plug"), device("x", "Lamp", { online: false })]} rooms={{}} write={noop} /></WithRole>);
+    await waitFor(() => expect(JSON.parse(localStorage.getItem("needsYouCleared") ?? "{}")).not.toHaveProperty(["o-g|Check it has power and Wi-Fi."]));
+    rerender(<WithRole role="admin"><HomePage devices={[sensor, gone, device("x", "Lamp", { online: false })]} rooms={{}} write={noop} /></WithRole>);
+    const again = within(await screen.findByRole("list", { name: "What needs you" }));
+    expect(again.getByText("Plug is offline")).toBeTruthy();
+    expect(again.queryByText("Lamp is offline")).toBeNull();
   });
 
   it("says all is well when it is", async () => {

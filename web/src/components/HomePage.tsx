@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth";
 import { useDragOrder, type Drag } from "@/lib/useDragOrder";
 import { cn, messageOf } from "@/lib/utils";
 
-export { problems } from "@/components/home/builtins";
+export { problems, sortCleared, CLEARED_FOR_MS } from "@/components/home/builtins";
 
 const WIDGETS_POLL_MS = 5_000; // scripts draw their widgets every 5 seconds
 const STATUS_POLL_MS = 15_000; // extensions and automations change slowly; devices come live from the shell
