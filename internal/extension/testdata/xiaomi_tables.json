@@ -1,0 +1,873 @@
+{
+ "deerma.humidifier.jsq5": {
+  "kind": "air",
+  "values": [
+   {
+    "code": "power",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "mode",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "1",
+      "2",
+      "3",
+      "humidity"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "target_humidity",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "max": 80,
+     "min": 40,
+     "step": 1,
+     "unit": "%"
+    },
+    "writable": true
+   },
+   {
+    "code": "sound",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "light",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "humidity",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "%"
+    },
+    "writable": false
+   },
+   {
+    "code": "temperature",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "°C"
+    },
+    "writable": false
+   },
+   {
+    "code": "no_water",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": false
+   },
+   {
+    "code": "tank_removed",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": false
+   },
+   {
+    "code": "fault",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "none",
+      "no water",
+      "tank removed"
+     ]
+    },
+    "writable": false
+   }
+  ]
+ },
+ "dmaker.fan.1c": {
+  "kind": "fan",
+  "values": [
+   {
+    "code": "power",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "fan_level",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "1",
+      "2",
+      "3"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "mode",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "straight",
+      "sleep"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "swing",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "off_timer",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "max": 480,
+     "min": 0,
+     "step": 1,
+     "unit": "min"
+    },
+    "writable": true
+   },
+   {
+    "code": "sound",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "light",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "child_lock",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "command",
+    "scale": 0,
+    "type": "Action",
+    "values": {
+     "range": [
+      "toggle"
+     ]
+    },
+    "writable": true
+   }
+  ]
+ },
+ "roborock.vacuum.s5": {
+  "kind": "vacuum",
+  "values": [
+   {
+    "code": "command",
+    "scale": 0,
+    "type": "Action",
+    "values": {
+     "range": [
+      "start",
+      "pause",
+      "stop",
+      "dock",
+      "spot",
+      "find"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "fan_speed",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "silent",
+      "balanced",
+      "strong",
+      "max",
+      "gentle"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "state",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "starting",
+      "off the dock",
+      "idle",
+      "remote control",
+      "cleaning",
+      "returning",
+      "manual",
+      "charging",
+      "charging problem",
+      "paused",
+      "spot cleaning",
+      "error",
+      "shutting down",
+      "updating",
+      "docking",
+      "going to target",
+      "zone cleaning",
+      "room cleaning",
+      "charged"
+     ]
+    },
+    "writable": false
+   },
+   {
+    "code": "battery",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "%"
+    },
+    "writable": false
+   },
+   {
+    "code": "error_code",
+    "scale": 0,
+    "type": "Integer",
+    "values": {},
+    "writable": false
+   },
+   {
+    "code": "sound_volume",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "max": 100,
+     "min": 0,
+     "step": 1,
+     "unit": "%"
+    },
+    "writable": true
+   },
+   {
+    "code": "clean_time",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "min"
+    },
+    "writable": false
+   },
+   {
+    "code": "clean_area",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "m²"
+    },
+    "writable": false
+   },
+   {
+    "code": "do_not_disturb",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": false
+   },
+   {
+    "code": "map_present",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": false
+   },
+   {
+    "code": "total_clean_hours",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "h"
+    },
+    "writable": false
+   },
+   {
+    "code": "total_clean_area",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "m²"
+    },
+    "writable": false
+   },
+   {
+    "code": "clean_count",
+    "scale": 0,
+    "type": "Integer",
+    "values": {},
+    "writable": false
+   },
+   {
+    "code": "main_brush_hours",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "h"
+    },
+    "writable": false
+   },
+   {
+    "code": "side_brush_hours",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "h"
+    },
+    "writable": false
+   },
+   {
+    "code": "filter_hours",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "h"
+    },
+    "writable": false
+   },
+   {
+    "code": "sensor_dirty_hours",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "h"
+    },
+    "writable": false
+   }
+  ]
+ },
+ "yeelink.light.ceiling5": {
+  "kind": "light",
+  "values": [
+   {
+    "code": "power",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "brightness",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "max": 100,
+     "min": 1,
+     "step": 1,
+     "unit": "%"
+    },
+    "writable": true
+   },
+   {
+    "code": "color_temperature",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "max": 5700,
+     "min": 2700,
+     "step": 1,
+     "unit": "K"
+    },
+    "writable": true
+   },
+   {
+    "code": "mode",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "day",
+      "night"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "flex_switch",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "command",
+    "scale": 0,
+    "type": "Action",
+    "values": {
+     "range": [
+      "toggle"
+     ]
+    },
+    "writable": true
+   }
+  ]
+ },
+ "zhimi.airp.mb5": {
+  "kind": "air",
+  "values": [
+   {
+    "code": "power",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "mode",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "auto",
+      "sleep",
+      "favorite",
+      "manual"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "fan_level",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "1",
+      "2",
+      "3"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "favorite_level",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "max": 11,
+     "min": 0,
+     "step": 1
+    },
+    "writable": true
+   },
+   {
+    "code": "anion",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "sound",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "child_lock",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "display",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "off",
+      "bright",
+      "brightest"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "pm25",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "µg/m³"
+    },
+    "writable": false
+   },
+   {
+    "code": "humidity",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "%"
+    },
+    "writable": false
+   },
+   {
+    "code": "temperature",
+    "scale": 1,
+    "type": "Integer",
+    "values": {
+     "unit": "°C"
+    },
+    "writable": false
+   },
+   {
+    "code": "filter_life",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "%"
+    },
+    "writable": false
+   },
+   {
+    "code": "filter_days_left",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "days"
+    },
+    "writable": false
+   },
+   {
+    "code": "filter_hours_used",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "h"
+    },
+    "writable": false
+   },
+   {
+    "code": "fault",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "none",
+      "PM sensor",
+      "temperature sensor",
+      "humidity sensor",
+      "no filter"
+     ]
+    },
+    "writable": false
+   },
+   {
+    "code": "temperature_unit",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "celsius",
+      "fahrenheit"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "favorite_speed",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "max": 2300,
+     "min": 200,
+     "step": 1,
+     "unit": "rpm"
+    },
+    "writable": true
+   },
+   {
+    "code": "manual_level",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "1",
+      "2",
+      "3"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "motor_speed",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "rpm"
+    },
+    "writable": false
+   },
+   {
+    "code": "motor_target_speed",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "rpm"
+    },
+    "writable": false
+   },
+   {
+    "code": "bottom_door_open",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": false
+   },
+   {
+    "code": "purified_volume",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "m³"
+    },
+    "writable": false
+   },
+   {
+    "code": "average_aqi",
+    "scale": 0,
+    "type": "Integer",
+    "values": {},
+    "writable": false
+   },
+   {
+    "code": "aqi_state",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "good, low",
+      "good, high",
+      "moderate, low",
+      "moderate, high",
+      "bad, low",
+      "bad, high"
+     ]
+    },
+    "writable": false
+   },
+   {
+    "code": "command",
+    "scale": 0,
+    "type": "Action",
+    "values": {
+     "range": [
+      "toggle",
+      "next_mode",
+      "next_fan_level"
+     ]
+    },
+    "writable": true
+   }
+  ]
+ },
+ "zhimi.humidifier.ca6": {
+  "kind": "air",
+  "values": [
+   {
+    "code": "power",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "mode",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "favorite",
+      "auto",
+      "sleep"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "target_humidity",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "max": 60,
+     "min": 30,
+     "step": 1,
+     "unit": "%"
+    },
+    "writable": true
+   },
+   {
+    "code": "auto_dry",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "sound",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "child_lock",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "display",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "off",
+      "dim",
+      "bright"
+     ]
+    },
+    "writable": true
+   },
+   {
+    "code": "status",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "off",
+      "working",
+      "drying",
+      "cleaning"
+     ]
+    },
+    "writable": false
+   },
+   {
+    "code": "humidity",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "%"
+    },
+    "writable": false
+   },
+   {
+    "code": "temperature",
+    "scale": 1,
+    "type": "Integer",
+    "values": {
+     "unit": "°C"
+    },
+    "writable": false
+   },
+   {
+    "code": "water_level",
+    "scale": 0,
+    "type": "Enum",
+    "values": {
+     "range": [
+      "empty",
+      "normal",
+      "full"
+     ]
+    },
+    "writable": false
+   },
+   {
+    "code": "fault",
+    "scale": 0,
+    "type": "Integer",
+    "values": {},
+    "writable": false
+   },
+   {
+    "code": "self_clean",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": true
+   },
+   {
+    "code": "self_clean_minutes",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "min"
+    },
+    "writable": false
+   },
+   {
+    "code": "actual_speed",
+    "scale": 0,
+    "type": "Integer",
+    "values": {
+     "unit": "rpm"
+    },
+    "writable": false
+   },
+   {
+    "code": "pump_running",
+    "scale": 0,
+    "type": "Boolean",
+    "values": {},
+    "writable": false
+   },
+   {
+    "code": "pump_count",
+    "scale": 0,
+    "type": "Integer",
+    "values": {},
+    "writable": false
+   },
+   {
+    "code": "command",
+    "scale": 0,
+    "type": "Action",
+    "values": {
+     "range": [
+      "toggle",
+      "next_mode"
+     ]
+    },
+    "writable": true
+   }
+  ]
+ }
+}

@@ -1,0 +1,154 @@
+# The end-to-end stack. Separate from the real one in every way: its own project, networks, volumes and config folder, no
+# host ports (see compose.debug.yaml) and no Docker socket in any container. Run it through ./run.mjs, which fills in the
+# E2E_* variables and removes all of it afterwards.
+name: tomtly-e2e
+
+services:
+  # Owns the network namespace tomtly and the browser share, so restarting the service doesn't lose its routes.
+  # Extensions can't reach any subnet the service has an interface on (internal/extension/ownnetwork.go), so the fake
+  # device sits on a network the service can only reach through `router`. The default route is dropped: nothing leaves.
+  netns:
+    image: alpine:3.22
+    init: true
+    cap_add: [NET_ADMIN]
+    cpus: 0.1
+    mem_limit: 32m
+    command: ["sh", "-c", "ip route del default; ip route add 10.77.0.0/24 via 10.76.1.2 && touch /tmp/ready && exec sleep infinity"]
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/ready"]
+      interval: 1s
+      retries: 30
+    networks:
+      home: {}
+      uplink:
+        ipv4_address: 10.76.1.10
+
+  router:
+    image: alpine:3.22
+    init: true
+    command: ["sleep", "infinity"]
+    cpus: 0.1
+    mem_limit: 32m
+    sysctls:
+      net.ipv4.ip_forward: "1"
+    networks:
+      uplink:
+        ipv4_address: 10.76.1.2
+      lan:
+        ipv4_address: 10.77.0.2
+
+  fake-device:
+    build: ./fixtures/fakes
+    init: true
+    cap_add: [NET_ADMIN]
+    cpus: 0.25
+    mem_limit: 64m
+    entrypoint: ["sh", "-c", "ip route replace default via 10.77.0.2 && exec /fakes device"]
+    depends_on: [router]
+    networks:
+      lan:
+        ipv4_address: 10.77.0.20
+
+  # Only GitHub is faked, for adding an extension from a repo. Tomtly's real download reaches it by GitHub's own names
+  # and trusts its certificate through SSL_CERT_FILE, so it needs no change. The marketplace doesn't use GitHub.
+  fake-github:
+    build: ./fixtures/fakes
+    init: true
+    command: ["/fakes", "github"]
+    cpus: 0.25
+    mem_limit: 64m
+    volumes:
+      - ./fixtures/github:/github:ro
+      - github-ca:/ca
+    healthcheck:
+      test: ["CMD", "test", "-f", "/ca/ca.pem"]
+      interval: 1s
+      retries: 30
+    networks:
+      home:
+        aliases: [api.github.com, codeload.github.com]
+
+  tomtly:
+    build:
+      context: ../..
+      args:
+        SKIP_GO_TESTS: "1"
+    network_mode: service:netns
+    depends_on:
+      netns:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      fake-github:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://tomtly:e2e-only@postgres:5432/tomtly
+      MARKETPLACE_URL: ${E2E_MARKET_URL:-}
+      MARKETPLACE_PUBLIC_KEY: ${E2E_MARKET_KEY:-}
+      MARKETPLACE_APPROVAL_PUBLIC_KEYS: ${E2E_MARKET_APPROVAL_KEY:-}
+      SSL_CERT_FILE: /ca/ca.pem
+      # Low, so the memory test's bomb is stopped well inside the container's limit below. Normal use is far under it.
+      EXTENSION_HEAP_LIMIT_MB: "256"
+    tmpfs:
+      - /data:uid=65534,gid=65534,size=128m
+    volumes:
+      - ./fixtures/home/configs/${E2E_CONFIG:-devices}.json:/config/config.json:ro
+      - ./fixtures/home/extensions:/config/extensions:ro
+      - ./.run/automations:/config/automations
+      - github-ca:/ca:ro
+    cpus: 1
+    mem_limit: 768m
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: tomtly
+      POSTGRES_DB: tomtly
+      POSTGRES_PASSWORD: e2e-only
+    tmpfs:
+      - /var/lib/postgresql/data:size=256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tomtly -d tomtly"]
+      interval: 1s
+      retries: 60
+    cpus: 0.5
+    mem_limit: 256m
+    networks: [home]
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v${E2E_PLAYWRIGHT_VERSION:-unset}-noble
+    profiles: [runner]
+    network_mode: service:netns
+    depends_on:
+      netns:
+        condition: service_healthy
+    working_dir: /work/e2e
+    environment:
+      CI: "1"
+      # "off" when this copy of the repository has no marketplace service: specs that need one skip themselves.
+      E2E_MARKET: ${E2E_MARKET:-on}
+    volumes:
+      - .:/work/e2e
+      - ../node_modules:/work/node_modules:ro
+    shm_size: 512m
+    cpus: 2
+    mem_limit: 2g
+
+networks:
+  # No way out: the service, its database and the marketplace can reach each other and nothing else.
+  home:
+    internal: true
+    ipam:
+      config:
+        - subnet: 10.76.0.0/24
+  uplink:
+    ipam:
+      config:
+        - subnet: 10.76.1.0/24
+  lan:
+    ipam:
+      config:
+        - subnet: 10.77.0.0/24
+
+volumes:
+  github-ca:

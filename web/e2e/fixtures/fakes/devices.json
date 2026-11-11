@@ -1,0 +1,54 @@
+[
+  {
+    "id": "lamp", "name": "Desk lamp", "kind": "light", "product": "Fake lamp", "online": true,
+    "values": [
+      { "code": "switch", "type": "Boolean", "writable": true, "value": false },
+      { "code": "bright_value", "type": "Integer", "writable": true, "value": 40, "min": 0, "max": 100, "step": 10, "unit": "%" },
+      { "code": "scene", "type": "Enum", "writable": true, "value": "reading", "range": ["reading", "night"] },
+      { "code": "work_mode", "type": "Enum", "writable": true, "value": "white", "range": ["white", "colour"] },
+      { "code": "flash", "type": "Action", "writable": true, "value": null, "range": ["flash"] },
+      { "code": "firmware", "type": "String", "value": "1.2.3" },
+      { "code": "cur_power", "type": "Number", "value": 7 }
+    ]
+  },
+  {
+    "id": "thermostat", "name": "Hall thermostat", "kind": "climate", "product": "Fake thermostat", "online": true,
+    "values": [
+      { "code": "switch", "type": "Boolean", "writable": true, "value": true },
+      { "code": "temp_current", "type": "Integer", "value": 205, "scale": 1, "unit": "°C" },
+      { "code": "temp_set", "type": "Integer", "writable": true, "value": 210, "min": 50, "max": 300, "step": 5, "scale": 1, "unit": "°C" },
+      { "code": "heating_state", "type": "Boolean", "value": true },
+      { "code": "mode", "type": "Enum", "writable": true, "value": "auto", "range": ["auto", "manual"] }
+    ]
+  },
+  {
+    "id": "blinds", "name": "Bedroom blinds", "kind": "cover", "product": "Fake blinds", "online": true,
+    "values": [
+      { "code": "control", "type": "Enum", "writable": true, "value": "stop", "range": ["open", "stop", "close"] },
+      { "code": "percent_control", "type": "Integer", "writable": true, "value": 30, "min": 0, "max": 100, "step": 10, "unit": "%" },
+      { "code": "percent_state", "type": "Integer", "value": 30, "unit": "%" }
+    ]
+  },
+  {
+    "id": "vacuum", "name": "Robot vacuum", "kind": "vacuum", "product": "Fake vacuum", "online": true,
+    "values": [
+      { "code": "state", "type": "Enum", "value": "docked", "range": ["docked", "cleaning"] },
+      { "code": "command", "type": "Action", "writable": true, "value": null, "range": ["start", "dock"] },
+      { "code": "fan_speed", "type": "Enum", "writable": true, "value": "quiet", "range": ["quiet", "turbo"] },
+      { "code": "battery", "type": "Integer", "value": 80, "unit": "%" }
+    ]
+  },
+  {
+    "id": "door", "name": "Front door", "kind": "sensor", "product": "Fake door sensor", "online": true,
+    "values": [
+      { "code": "open", "type": "Boolean", "value": true },
+      { "code": "battery", "type": "Integer", "value": 15, "unit": "%" }
+    ]
+  },
+  {
+    "id": "cellar", "name": "Cellar sensor", "kind": "sensor", "product": "Fake sensor", "online": false,
+    "values": [
+      { "code": "open", "type": "Boolean", "value": false }
+    ]
+  }
+]

@@ -1,0 +1,23 @@
+{
+  "timezone": "UTC",
+  "extensions": [
+    {
+      "source": "./extensions/fake-data",
+      "settings": {
+        "station": "Gdansk"
+      }
+    },
+    {
+      "source": "./extensions/plain-plugin",
+      "settings": {}
+    },
+    {
+      "source": "./extensions/needs-setting",
+      "settings": {}
+    },
+    {
+      "source": "./extensions/broken-code",
+      "settings": {}
+    }
+  ]
+}

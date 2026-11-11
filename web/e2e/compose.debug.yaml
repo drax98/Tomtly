@@ -1,0 +1,5 @@
+# Only with `pnpm e2e --debug`. Not 8099, which belongs to the real stack.
+services:
+  netns:
+    ports:
+      - "127.0.0.1:18099:8099"
