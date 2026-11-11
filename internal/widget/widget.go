@@ -109,6 +109,10 @@ func check(b *Block) error {
 		if b.Label == "" {
 			return errors.New("a stat needs a label")
 		}
+	case "group":
+		if b.Label == "" {
+			return errors.New("a group needs a label")
+		}
 	case "rows":
 		if len(b.Rows) > maxRows {
 			return fmt.Errorf("up to %d rows", maxRows)
@@ -142,7 +146,7 @@ func check(b *Block) error {
 			return fmt.Errorf("args is an object of up to %d bytes", maxArgs)
 		}
 	default:
-		return fmt.Errorf("unknown type %q: use text, stat, rows, device, number, toggle, select or button", b.Type)
+		return fmt.Errorf("unknown type %q: use group, text, stat, rows, device, number, toggle, select or button", b.Type)
 	}
 	return nil
 }

@@ -146,7 +146,9 @@ home.widget("heating", {
 ```
 
 The blocks are `text`, `stat`, `rows`, `device` (a device's value with its control), the inputs `number`, `toggle` and
-`select`, and `button`. `sdk/home.d.ts` lists their fields. A script has up to 10 widgets of up to 40 blocks each.
+`select`, and `button`. `group` starts a titled section: the blocks after it, up to the next group, are drawn together
+under its `label`, so a widget about several things says which control is which. `sdk/home.d.ts` lists their fields.
+A script has up to 10 widgets of up to 40 blocks each, a group counting as one.
 
 - `render` runs every 5 seconds and after a press. A render that fails shows its error on the widget, not in the log.
 - A press runs like the rest of the script. A practising script only logs what it would do, and the page says so.

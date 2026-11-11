@@ -142,6 +142,27 @@ describe("HomePage", () => {
     expect(again.queryByText("Lamp is offline")).toBeNull();
   });
 
+  it("draws a widget's groups as titled sections, each holding the blocks up to the next group", async () => {
+    const grouped: RenderedWidget = {
+      key: "script:w/controls", title: "Quick controls", from: "w",
+      blocks: [
+        { type: "text", text: "Before any group" },
+        { type: "group", label: "Szafka" }, { type: "stat", label: "Power", value: 10, unit: "W" },
+        { type: "group", label: "Roller blind" }, { type: "rows", rows: [{ label: "Position", value: "70% closed" }] }, { type: "button", label: "Open", action: "open" },
+      ],
+    };
+    mockService({ "GET /api/widgets": () => ({ body: { layout: ["script:w/controls"], widgets: [grouped] } }) });
+    render(<WithRole role="operator"><HomePage devices={[]} rooms={{}} write={noop} /></WithRole>);
+    const szafka = within(await screen.findByRole("region", { name: "Szafka" }));
+    expect(szafka.getByRole("heading", { name: "Szafka" })).toBeTruthy();
+    expect(szafka.getByText("Power")).toBeTruthy();
+    expect(szafka.queryByText("70% closed")).toBeNull();
+    const blind = within(screen.getByRole("region", { name: "Roller blind" }));
+    expect(blind.getByText("70% closed")).toBeTruthy();
+    expect(blind.getByRole("button", { name: "Open" })).toBeTruthy();
+    expect(screen.getByText("Before any group").closest("section")).toBeNull();
+  });
+
   it("says all is well when it is", async () => {
     mockService({ "GET /api/widgets": () => ({ body: { layout: ["builtin/needs-you", "builtin/heating"], widgets: [] } }), "GET /api/extensions": () => ({ body: [] }), "GET /api/automations": () => ({ body: { scripts: [], events: [] } }) });
     render(<WithRole role="viewer"><HomePage devices={[device("a", "Lamp")]} rooms={{}} write={noop} /></WithRole>);

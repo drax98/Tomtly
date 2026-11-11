@@ -79,6 +79,8 @@ type Tone = "good" | "warn" | "bad";
  * hold what someone types or picks, and a button sends all of them, with its args, to the action it names.
  */
 type WidgetBlock =
+  /** Starts a group titled label: the blocks after it, up to the next group, are drawn together under that title. */
+  | { type: "group"; label: string }
   | { type: "text"; text: string; tone?: Tone }
   | { type: "stat"; label: string; value?: Value | null; unit?: string; tone?: Tone }
   | { type: "rows"; rows: { label: string; value?: Value | null; tone?: Tone }[] }

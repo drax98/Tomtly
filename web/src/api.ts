@@ -291,7 +291,7 @@ export type WidgetTone = "good" | "warn" | "bad";
 
 /** One piece of a widget, as sdk/home.d.ts describes it. What a field means depends on type. */
 export interface WidgetBlock {
-  type: "text" | "stat" | "rows" | "device" | "number" | "toggle" | "select" | "button";
+  type: "group" | "text" | "stat" | "rows" | "device" | "number" | "toggle" | "select" | "button";
   label?: string;
   text?: string;
   value?: Value | null;

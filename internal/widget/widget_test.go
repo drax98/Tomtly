@@ -17,6 +17,9 @@ func TestCleanKeepsOnlyWhatThePageKnows(t *testing.T) {
 	if !HasAction(out, "go") || HasAction(out, "stop") {
 		t.Error("HasAction")
 	}
+	if out, err := Clean([]byte(`[{"type":"group","label":"Szafka"},{"type":"text","text":"a"}]`)); err != nil || string(out) != `[{"type":"group","label":"Szafka"},{"type":"text","text":"a"}]` {
+		t.Errorf("a group keeps its label: %s %v", out, err)
+	}
 	if out, err := Clean([]byte(`null`)); err != nil || string(out) != "[]" {
 		t.Errorf("nothing to show is no blocks: %s %v", out, err)
 	}
@@ -29,6 +32,7 @@ func TestCleanRefuses(t *testing.T) {
 		"unknown type":     `[{"type":"html","text":"<b>"}]`,
 		"needs text":       `[{"type":"text"}]`,
 		"stat needs":       `[{"type":"stat"}]`,
+		"group needs":      `[{"type":"group"}]`,
 		"value is":         `[{"type":"stat","label":"a","value":{"x":1}}]`,
 		"tone is":          `[{"type":"text","text":"a","tone":"red"}]`,
 		"text is up to":    `[{"type":"text","text":"` + long + `"}]`,

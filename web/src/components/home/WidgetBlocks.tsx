@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { api, type Device, type RenderedWidget, type Value, type WidgetBlock, type WidgetTone } from "@/api";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,16 @@ function groups(blocks: WidgetBlock[]) {
     else out.push({ kind, blocks: [b] });
   }
   return out;
+}
+
+/** A group block starts a titled section that runs to the next group; blocks before the first group have no title. */
+function sections(blocks: WidgetBlock[]) {
+  const out: { title?: string; blocks: WidgetBlock[] }[] = [{ blocks: [] }];
+  for (const b of blocks) {
+    if (b.type === "group") out.push({ title: b.label, blocks: [] });
+    else out[out.length - 1].blocks.push(b);
+  }
+  return out.filter((s, i) => i > 0 || s.blocks.length > 0);
 }
 
 interface Props {
@@ -104,9 +114,9 @@ export function WidgetBlocks({ widget, devices, write, onPressed }: Props) {
   if (!widget.blocks) return <p className="text-sm text-muted-foreground">Drawing it…</p>;
   if (blocks.length === 0) return <p className="text-sm text-muted-foreground">Nothing to show right now.</p>;
 
-  return (
+  const draw = (list: WidgetBlock[]) => (
     <div className="space-y-4">
-      {groups(blocks).map((g, gi) => {
+      {groups(list).map((g, gi) => {
         if (g.kind === "stat") {
           return (
             <dl key={gi} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -147,6 +157,21 @@ export function WidgetBlocks({ widget, devices, write, onPressed }: Props) {
           </div>
         );
       })}
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {sections(blocks).map((s, si) =>
+        s.title === undefined ? (
+          <Fragment key={si}>{draw(s.blocks)}</Fragment>
+        ) : (
+          <section key={si} aria-label={s.title} className="space-y-3 rounded-lg border border-border/60 p-3">
+            <h3 className="text-sm font-medium">{s.title}</h3>
+            {s.blocks.length > 0 && draw(s.blocks)}
+          </section>
+        ),
+      )}
     </div>
   );
 }

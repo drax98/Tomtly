@@ -276,6 +276,8 @@ type WidgetValue = boolean | number | string | null;
  * hold what someone types or picks, and a button sends all of them, with its args, to the action of yours it names.
  */
 type WidgetBlock =
+  /** Starts a group titled label: the blocks after it, up to the next group, are drawn together under that title. */
+  | { type: "group"; label: string }
   | { type: "text"; text: string; tone?: WidgetTone }
   | { type: "stat"; label: string; value?: WidgetValue; unit?: string; tone?: WidgetTone }
   | { type: "rows"; rows: { label: string; value?: WidgetValue; tone?: WidgetTone }[] }
