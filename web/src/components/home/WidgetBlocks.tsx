@@ -1,6 +1,6 @@
 import { Fragment, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { api, type Device, type RenderedWidget, type Value, type WidgetBlock, type WidgetTone } from "@/api";
+import { api, type DataPoint, type Device, type RenderedWidget, type Value, type WidgetBlock, type WidgetTone } from "@/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,15 @@ const shown = (v: Value | null | undefined) =>
   v === null || v === undefined ? "–" : typeof v === "boolean" ? (v ? "Yes" : "No") : typeof v === "number" ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : v;
 
 const CONTROLS = new Set(["number", "toggle", "select", "button"]);
+
+/** A device block's min and max, given in the units shown, narrow the device's own range: never past it. */
+function narrowed(dp: DataPoint, min?: number, max?: number): DataPoint {
+  if (min === undefined && max === undefined) return dp;
+  const raw = (v: number) => Math.round(v * 10 ** (dp.scale ?? 0));
+  const lo = dp.values.min, hi = dp.values.max;
+  const clamp = (v: number) => Math.min(hi ?? v, Math.max(lo ?? v, v));
+  return { ...dp, values: { ...dp.values, min: min === undefined ? lo : clamp(raw(min)), max: max === undefined ? hi : clamp(raw(max)) } };
+}
 
 /** Consecutive stats share a row, and so do consecutive inputs and buttons, the way a form reads. */
 function groups(blocks: WidgetBlock[]) {
@@ -153,7 +162,7 @@ export function WidgetBlocks({ widget, devices, write, onPressed }: Props) {
         return (
           <div key={gi} className="flex min-h-11 flex-wrap items-center justify-between gap-3 text-sm">
             <span className="min-w-0 break-words">{b.label ?? `${device.name} · ${codeLabel(dp.code)}`}</span>
-            <Control device={device} dp={dp} write={write} />
+            <Control device={device} dp={narrowed(dp, b.min, b.max)} write={write} />
           </div>
         );
       })}

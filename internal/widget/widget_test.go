@@ -20,6 +20,9 @@ func TestCleanKeepsOnlyWhatThePageKnows(t *testing.T) {
 	if out, err := Clean([]byte(`[{"type":"group","label":"Szafka"},{"type":"text","text":"a"}]`)); err != nil || string(out) != `[{"type":"group","label":"Szafka"},{"type":"text","text":"a"}]` {
 		t.Errorf("a group keeps its label: %s %v", out, err)
 	}
+	if out, err := Clean([]byte(`[{"type":"device","device":"t","code":"temp_set","min":5,"max":35}]`)); err != nil || !strings.Contains(string(out), `"min":5,"max":35`) {
+		t.Errorf("a device block keeps its range: %s %v", out, err)
+	}
 	if out, err := Clean([]byte(`null`)); err != nil || string(out) != "[]" {
 		t.Errorf("nothing to show is no blocks: %s %v", out, err)
 	}
@@ -38,6 +41,7 @@ func TestCleanRefuses(t *testing.T) {
 		"text is up to":    `[{"type":"text","text":"` + long + `"}]`,
 		"a row is":         `[{"type":"rows","rows":[{"label":"a","value":[1]}]}]`,
 		"device and code":  `[{"type":"device","device":"lamp"}]`,
+		"min is below":     `[{"type":"device","device":"t","code":"temp_set","min":30,"max":5}]`,
 		"needs a name":     `[{"type":"number","name":"1x"}]`,
 		"needs 1 to":       `[{"type":"select","name":"a"}]`,
 		"needs a label":    `[{"type":"button","label":"Go","action":"a:b"}]`,

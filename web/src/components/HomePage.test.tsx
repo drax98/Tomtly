@@ -163,6 +163,23 @@ describe("HomePage", () => {
     expect(screen.getByText("Before any group").closest("section")).toBeNull();
   });
 
+  it("narrows a device block's slider to its min and max, in the units shown, never past the device's own", async () => {
+    const thermostat = device("t", "Salon", { kind: "climate", dps: [dp("temp_set", 220, { writable: true, scale: 1, values: { min: 5, max: 700, step: 5, unit: "°C" } })] });
+    const rooms: RenderedWidget = {
+      key: "script:w/rooms", title: "Rooms", from: "w",
+      blocks: [
+        { type: "device", device: "t", code: "temp_set", label: "Narrowed", min: 5, max: 30 },
+        { type: "device", device: "t", code: "temp_set", label: "Too wide", min: 0, max: 100 },
+        { type: "device", device: "t", code: "temp_set", label: "As the device says" },
+      ],
+    };
+    mockService({ "GET /api/widgets": () => ({ body: { layout: ["script:w/rooms"], widgets: [rooms] } }) });
+    render(<WithRole role="operator"><HomePage devices={[thermostat]} rooms={{}} write={noop} /></WithRole>);
+    await screen.findByText("Narrowed");
+    const range = screen.getAllByRole("slider").map((el) => [el.getAttribute("aria-valuemin"), el.getAttribute("aria-valuemax")]);
+    expect(range).toEqual([["50", "300"], ["5", "700"], ["5", "700"]]);
+  });
+
   it("says all is well when it is", async () => {
     mockService({ "GET /api/widgets": () => ({ body: { layout: ["builtin/needs-you", "builtin/heating"], widgets: [] } }), "GET /api/extensions": () => ({ body: [] }), "GET /api/automations": () => ({ body: { scripts: [], events: [] } }) });
     render(<WithRole role="viewer"><HomePage devices={[device("a", "Lamp")]} rooms={{}} write={noop} /></WithRole>);

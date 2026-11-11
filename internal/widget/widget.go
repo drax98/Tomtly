@@ -126,6 +126,9 @@ func check(b *Block) error {
 		if b.Device == "" || b.Code == "" {
 			return errors.New("a device block needs device and code")
 		}
+		if b.Min != nil && b.Max != nil && *b.Min >= *b.Max {
+			return errors.New("a device block's min is below its max")
+		}
 	case "number", "toggle", "select":
 		if !Name.MatchString(b.Name) {
 			return errors.New("an input needs a name: letters, digits, - and _, starting with a letter")

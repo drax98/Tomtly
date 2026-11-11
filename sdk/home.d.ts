@@ -84,8 +84,9 @@ type WidgetBlock =
   | { type: "text"; text: string; tone?: Tone }
   | { type: "stat"; label: string; value?: Value | null; unit?: string; tone?: Tone }
   | { type: "rows"; rows: { label: string; value?: Value | null; tone?: Tone }[] }
-  /** A device's value with its control, like on the Devices page, by device id and value code. */
-  | { type: "device"; device: string; code: string; label?: string }
+  /** A device's value with its control, like on the Devices page, by device id and value code. min and max narrow a
+   * slider to the range that matters, in the units shown (°C, not tenths), never past the device's own limits. */
+  | { type: "device"; device: string; code: string; label?: string; min?: number; max?: number }
   | { type: "number"; name: string; label?: string; value?: number; min?: number; max?: number; step?: number; unit?: string }
   | { type: "toggle"; name: string; label?: string; value?: boolean }
   | { type: "select"; name: string; label?: string; value?: string; options: string[] }

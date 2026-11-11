@@ -145,7 +145,8 @@ home.widget("heating", {
 });
 ```
 
-The blocks are `text`, `stat`, `rows`, `device` (a device's value with its control), the inputs `number`, `toggle` and
+The blocks are `text`, `stat`, `rows`, `device` (a device's value with its control; `min` and `max` narrow its slider to
+the range that matters, in the units shown), the inputs `number`, `toggle` and
 `select`, and `button`. `group` starts a titled section: the blocks after it, up to the next group, are drawn together
 under its `label`, so a widget about several things says which control is which. `sdk/home.d.ts` lists their fields.
 A script has up to 10 widgets of up to 40 blocks each, a group counting as one.

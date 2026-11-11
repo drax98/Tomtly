@@ -281,8 +281,9 @@ type WidgetBlock =
   | { type: "text"; text: string; tone?: WidgetTone }
   | { type: "stat"; label: string; value?: WidgetValue; unit?: string; tone?: WidgetTone }
   | { type: "rows"; rows: { label: string; value?: WidgetValue; tone?: WidgetTone }[] }
-  /** A device's value with its control, like on the Devices page, by its full id ("<your id>:<device id>") and code. */
-  | { type: "device"; device: string; code: string; label?: string }
+  /** A device's value with its control, like on the Devices page, by its full id ("<your id>:<device id>") and code. min
+   * and max narrow a slider to the range that matters, in the units shown, never past the device's own limits. */
+  | { type: "device"; device: string; code: string; label?: string; min?: number; max?: number }
   | { type: "number"; name: string; label?: string; value?: number; min?: number; max?: number; step?: number; unit?: string }
   | { type: "toggle"; name: string; label?: string; value?: boolean }
   | { type: "select"; name: string; label?: string; value?: string; options: string[] }

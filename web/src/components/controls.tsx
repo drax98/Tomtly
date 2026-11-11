@@ -281,7 +281,7 @@ export function NumberSlider({ device, dp, write }: { device: Device; dp: DataPo
         disabled={!canWrite}
         onValueCommit={([v]) => write(device.id, dp.dp, v)}
       />
-      <span className="w-14 text-right text-sm font-medium tabular-nums">{display(dp)}</span>
+      <span className="w-16 whitespace-nowrap text-right text-sm font-medium tabular-nums">{display(dp)}</span>
     </div>
   );
 }
