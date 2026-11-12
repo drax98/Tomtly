@@ -101,15 +101,52 @@ describe("Control", () => {
     expect(write).toHaveBeenCalledWith("d1", "1", "fast");
   });
 
-  it("shows a number with a range as a slider that sends where it was let go", () => {
+  const level = (value: number) => dp("bright_value", { type: "Integer", value, scale: 0, values: { min: 0, max: 100, step: 5, unit: "%" } });
+
+  it("shows a number with a range as a slider that sends where it was left, 2 s after the last step", () => {
+    vi.useFakeTimers();
     const write = vi.fn();
-    const level = dp("bright_value", { type: "Integer", value: 40, scale: 0, values: { min: 0, max: 100, step: 5, unit: "%" } });
-    render(asWriter(<Control device={device()} dp={level} write={write} />));
+    render(asWriter(<Control device={device()} dp={level(40)} write={write} />));
     expect(screen.getByText("40 %")).toBeTruthy();
     const thumb = screen.getByRole("slider", { name: "Lamp Brightness" });
     expect(thumb.getAttribute("aria-valuenow")).toBe("40");
     fireEvent.keyDown(thumb, { key: "ArrowRight" });
+    act(() => vi.advanceTimersByTime(1999));
+    expect(write).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
     expect(write).toHaveBeenCalledWith("d1", "1", 45);
+  });
+
+  it("sends several quick arrow steps as one value, keeping focus and ignoring device reports meanwhile", () => {
+    vi.useFakeTimers();
+    const write = vi.fn();
+    const { rerender } = render(asWriter(<Control device={device()} dp={level(40)} write={write} />));
+    const thumb = screen.getByRole("slider", { name: "Lamp Brightness" });
+    thumb.focus();
+    fireEvent.keyDown(thumb, { key: "ArrowRight" });
+    act(() => vi.advanceTimersByTime(1500));
+    rerender(asWriter(<Control device={device()} dp={level(40)} write={write} />)); // a report mid-way: the thumb stays
+    const after = screen.getByRole("slider", { name: "Lamp Brightness" });
+    expect(document.activeElement).toBe(after);
+    expect(after.getAttribute("aria-valuenow")).toBe("45");
+    fireEvent.keyDown(after, { key: "ArrowRight" });
+    act(() => vi.advanceTimersByTime(1500));
+    expect(write).not.toHaveBeenCalled();                      // each step restarts the wait
+    act(() => vi.advanceTimersByTime(500));
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write).toHaveBeenCalledWith("d1", "1", 50);
+    rerender(asWriter(<Control device={device()} dp={level(70)} write={write} />)); // changed elsewhere: the thumb follows
+    expect(after.getAttribute("aria-valuenow")).toBe("70");
+    expect(document.activeElement).toBe(after);
+  });
+
+  it("still sends a waiting change when the slider goes away", () => {
+    vi.useFakeTimers();
+    const write = vi.fn();
+    const { unmount } = render(asWriter(<Control device={device()} dp={level(40)} write={write} />));
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Lamp Brightness" }), { key: "ArrowLeft" });
+    unmount();
+    expect(write).toHaveBeenCalledWith("d1", "1", 35);
   });
 
   it("shows a value it has no control for as plain text", () => {

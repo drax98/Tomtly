@@ -5,7 +5,7 @@ import { Button, type ButtonProps } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
+import { FollowingSlider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { capitalize, display, findDp, hueToHex, label } from "@/lib/device";
@@ -270,16 +270,14 @@ export function NumberSlider({ device, dp, write }: { device: Device; dp: DataPo
   const value = typeof dp.value === "number" ? dp.value : dp.values.min!;
   return (
     <div className="flex w-48 items-center gap-3">
-      <Slider
+      <FollowingSlider
         aria-label={`${device.name} ${label(dp.code)}`}
-        // Remounting on a new value lets the thumb follow the device without fighting a drag in progress.
-        key={value}
-        defaultValue={[value]}
+        value={value}
         min={dp.values.min}
         max={dp.values.max}
         step={dp.values.step ?? 1}
         disabled={!canWrite}
-        onValueCommit={([v]) => write(device.id, dp.dp, v)}
+        onCommit={(v) => write(device.id, dp.dp, v)}
       />
       <span className="w-16 whitespace-nowrap text-right text-sm font-medium tabular-nums">{display(dp)}</span>
     </div>

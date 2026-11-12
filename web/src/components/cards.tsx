@@ -5,7 +5,7 @@ import type { DataPoint, Device } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Slider } from "@/components/ui/slider";
+import { FollowingSlider } from "@/components/ui/slider";
 import { capitalize, display, findDp, isAdvanced, label } from "@/lib/device";
 import { cn } from "@/lib/utils";
 import { ActionButton, Control, DeviceCard, EnumSelect, PowerSwitch, Row, useCanWrite, usePinned, type CardProps } from "./controls";
@@ -167,15 +167,14 @@ export function CoverCard({ device, write }: CardProps) {
   return (
     <DeviceCard device={device} action={known !== null && <Badge variant="secondary" className="px-3 py-1 text-sm tabular-nums">{value === 0 ? "Closed" : value === 100 ? "Open" : `${value}% open`}</Badge>}>
       {position && (
-        <Slider
+        <FollowingSlider
           aria-label={`${device.name} position`}
-          key={value}
-          defaultValue={[value]}
+          value={value}
           min={0}
           max={100}
           step={position.values.step ?? 1}
           disabled={!canWrite}
-          onValueCommit={([v]) => write(device.id, position.dp, v)}
+          onCommit={(v) => write(device.id, position.dp, v)}
         />
       )}
       {control && (
