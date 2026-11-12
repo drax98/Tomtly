@@ -111,8 +111,10 @@ describe("Control", () => {
     const thumb = screen.getByRole("slider", { name: "Lamp Brightness" });
     expect(thumb.getAttribute("aria-valuenow")).toBe("40");
     fireEvent.keyDown(thumb, { key: "ArrowRight" });
+    expect(screen.getByText("45 %")).toBeTruthy();                 // the number moves with the thumb at once
+    expect(thumb.getAttribute("aria-valuenow")).toBe("45");
     act(() => vi.advanceTimersByTime(1999));
-    expect(write).not.toHaveBeenCalled();
+    expect(write).not.toHaveBeenCalled();                          // the request waits in the background
     act(() => vi.advanceTimersByTime(1));
     expect(write).toHaveBeenCalledWith("d1", "1", 45);
   });

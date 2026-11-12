@@ -54,30 +54,36 @@ function useDebouncedCommit(send: (value: number) => void) {
     clearTimeout(timer.current)
     timer.current = setTimeout(flush, COMMIT_DELAY_MS)
   }
-  return { commit, waiting: () => timer.current !== undefined }
+  const waiting = React.useCallback(() => timer.current !== undefined, [])
+  return { commit, waiting }
 }
 
 /**
- * A slider that follows a device's value, except while someone is moving it or a change is waiting to be sent, so a
- * report doesn't throw the thumb back. It stays mounted when the value changes, so a focused thumb keeps focus.
+ * A slider's value that follows a device's, except while someone is moving it or a change is waiting to be sent, so a
+ * report doesn't throw the thumb back. shown moves at once with the thumb; onCommit gets the value in the background,
+ * COMMIT_DELAY_MS after the last step. Spread sliderProps on a Slider.
  */
-function FollowingSlider({ value, onCommit, ...props }: FollowingSliderProps) {
+function useFollowingValue(value: number, onCommit: (value: number) => void) {
   const [shown, setShown] = React.useState(value)
   const dragging = React.useRef(false)
   const { commit, waiting } = useDebouncedCommit(onCommit)
   React.useEffect(() => {
     if (!dragging.current && !waiting()) setShown(value)
   }, [value, waiting])
-  return (
-    <Slider
-      {...props}
-      value={[shown]}
-      onPointerDown={() => (dragging.current = true)}
-      onPointerUp={() => (dragging.current = false)}
-      onValueChange={([v]) => setShown(v)}
-      onValueCommit={([v]) => commit(v)}
-    />
-  )
+  const sliderProps = {
+    value: [shown],
+    onPointerDown: () => (dragging.current = true),
+    onPointerUp: () => (dragging.current = false),
+    onValueChange: ([v]: number[]) => setShown(v),
+    onValueCommit: ([v]: number[]) => commit(v),
+  }
+  return { shown, sliderProps }
 }
 
-export { Slider, FollowingSlider }
+/** A Slider on useFollowingValue. It stays mounted when the value changes, so a focused thumb keeps focus. */
+function FollowingSlider({ value, onCommit, ...props }: FollowingSliderProps) {
+  const { sliderProps } = useFollowingValue(value, onCommit)
+  return <Slider {...props} {...sliderProps} />
+}
+
+export { Slider, FollowingSlider, useFollowingValue }

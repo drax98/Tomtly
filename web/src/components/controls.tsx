@@ -5,7 +5,7 @@ import { Button, type ButtonProps } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FollowingSlider } from "@/components/ui/slider";
+import { Slider, useFollowingValue } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { capitalize, display, findDp, hueToHex, label } from "@/lib/device";
@@ -268,18 +268,19 @@ function wheelAt(e: PointerEvent<HTMLDivElement>): Hs {
 export function NumberSlider({ device, dp, write }: { device: Device; dp: DataPoint; write: Write }) {
   const canWrite = useCanWrite();
   const value = typeof dp.value === "number" ? dp.value : dp.values.min!;
+  // The number beside it moves with the thumb at once; the device gets the value in the background.
+  const { shown, sliderProps } = useFollowingValue(value, (v) => write(device.id, dp.dp, v));
   return (
     <div className="flex w-48 items-center gap-3">
-      <FollowingSlider
+      <Slider
         aria-label={`${device.name} ${label(dp.code)}`}
-        value={value}
         min={dp.values.min}
         max={dp.values.max}
         step={dp.values.step ?? 1}
         disabled={!canWrite}
-        onCommit={(v) => write(device.id, dp.dp, v)}
+        {...sliderProps}
       />
-      <span className="w-16 whitespace-nowrap text-right text-sm font-medium tabular-nums">{display(dp)}</span>
+      <span className="w-16 whitespace-nowrap text-right text-sm font-medium tabular-nums">{display({ ...dp, value: shown })}</span>
     </div>
   );
 }
