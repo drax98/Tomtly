@@ -242,6 +242,8 @@ interface DeviceValue {
   unit?: string;
   /** How to display an Integer: 205 with scale 1 reads as 20.5. */
   scale?: number;
+  /** A setting rarely changed, such as a calibration: the device screen folds it away under the everyday values. */
+  advanced?: boolean;
 }
 
 interface ExtensionDevice {
@@ -287,7 +289,16 @@ type WidgetBlock =
   | { type: "number"; name: string; label?: string; value?: number; min?: number; max?: number; step?: number; unit?: string }
   | { type: "toggle"; name: string; label?: string; value?: boolean }
   | { type: "select"; name: string; label?: string; value?: string; options: string[] }
-  | { type: "button"; label: string; action: string; args?: Record<string, unknown>; tone?: WidgetTone };
+  /** A time of day as "HH:MM", in steps of step minutes (1 by default). */
+  | { type: "time"; name: string; label?: string; value?: string; step?: number }
+  | { type: "button"; label: string; action: string; args?: Record<string, unknown>; tone?: WidgetTone }
+  /**
+   * A button labelled label that opens a form: title heads it, text explains it, and blocks are its fields (group, text,
+   * rows, number, toggle, select and time, up to 40). Save calls action with the form's values by name, plus args, the
+   * way a button does; Cancel sends nothing. Each opening starts from the values render gives. columns: 2 lays the
+   * inputs side by side in pairs, such as a time and its temperature; text and rows always take the full width.
+   */
+  | { type: "dialog"; label: string; action: string; title?: string; text?: string; args?: Record<string, unknown>; blocks: WidgetBlock[]; columns?: 1 | 2 };
 
 type ExtensionLicense = "MIT" | "Apache-2.0" | "BSD-2-Clause" | "BSD-3-Clause" | "ISC" | "MPL-2.0" | "LGPL-2.1-only" | "LGPL-2.1-or-later"
   | "LGPL-3.0-only" | "LGPL-3.0-or-later" | "GPL-2.0-only" | "GPL-2.0-or-later" | "GPL-3.0-only" | "GPL-3.0-or-later" | "AGPL-3.0-only"

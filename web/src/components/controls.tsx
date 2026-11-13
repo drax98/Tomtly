@@ -168,6 +168,8 @@ export function EnumSelect({ device, dp, write }: { device: Device; dp: DataPoin
       </SelectTrigger>
       <SelectContent>
         {dp.values.range?.map((v) => <SelectItem key={v} value={v}>{capitalize(v)}</SelectItem>)}
+        {/* A state the device can be in but that can't be chosen here, like a thermostat's temporary override. */}
+        {typeof dp.value === "string" && !dp.values.range?.includes(dp.value) && <SelectItem value={dp.value} disabled>{capitalize(dp.value)}</SelectItem>}
       </SelectContent>
     </Select>
   );

@@ -41,6 +41,21 @@ describe("Device drawer", () => {
     for (const code of ["switch_1", "cur_power", "child_lock", "countdown_1"]) expect(drawer.getByText(code)).toBeTruthy();
   });
 
+  it("folds advanced settings away under the everyday values", async () => {
+    plug.dps!.push(dp("calibration", "calibration", 0, { type: "Integer", values: { min: -90, max: 90 }, scale: 1, advanced: true }));
+    try {
+      show();
+      fireEvent.click(card());
+      const drawer = within(await screen.findByRole("dialog", { name: "Desk plug" }));
+      const fold = drawer.getByText("Advanced settings (1)").closest("details")!;
+      expect(fold.open).toBe(false);
+      expect(within(fold).getByText("calibration")).toBeTruthy();
+      expect(drawer.getAllByText("switch_1").every((el) => !fold.contains(el))).toBe(true);
+    } finally {
+      plug.dps!.pop();
+    }
+  });
+
   it("doesn't open when an option is chosen from a menu on the card", async () => {
     const fan: Device = { ...plug, id: "fan", name: "Fan", kind: "fan", dps: [dp("1", "mode", "low", { type: "Enum", values: { range: ["low", "high"] } })] };
     mockService({ "GET /api/pins": () => ({ body: {} }) });

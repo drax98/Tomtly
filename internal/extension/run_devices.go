@@ -32,6 +32,7 @@ type declaredValue struct {
 	Step     *float64 `json:"step"`
 	Unit     string   `json:"unit"`
 	Scale    int      `json:"scale"`
+	Advanced bool     `json:"advanced"`
 }
 
 func (i *instance) pollDevices(l *loaded, api goja.Value) {
@@ -109,7 +110,7 @@ func convertDevices(extension, text string) ([]device.Device, error) {
 			if v.Unit != "" {
 				values["unit"] = v.Unit
 			}
-			out.DPs = append(out.DPs, device.DP{DP: v.Code, Code: v.Code, Type: v.Type, Values: values, Scale: v.Scale, Writable: v.Writable, Value: v.Value})
+			out.DPs = append(out.DPs, device.DP{DP: v.Code, Code: v.Code, Type: v.Type, Values: values, Scale: v.Scale, Writable: v.Writable, Value: v.Value, Advanced: v.Advanced})
 		}
 		devices = append(devices, out)
 	}

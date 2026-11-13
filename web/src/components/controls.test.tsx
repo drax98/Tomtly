@@ -92,6 +92,18 @@ describe("Control", () => {
     expect(write).toHaveBeenCalledWith("d1", "1", true);
   });
 
+  it("shows a state the device is in that can't be chosen, like a thermostat's override, without offering it", async () => {
+    const write = vi.fn();
+    const mode = dp("mode", { type: "Enum", value: "TempProg", values: { range: ["Manual", "Program"] } });
+    render(asWriter(<Control device={device()} dp={mode} write={write} />));
+    const select = screen.getByRole("combobox", { name: "Lamp Mode" });
+    expect(select.textContent).toContain("TempProg");
+    fireEvent.keyDown(select, { key: "Enter" });
+    expect((await screen.findByRole("option", { name: "TempProg" })).getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(screen.getByRole("option", { name: "Program" }));
+    expect(write).toHaveBeenCalledWith("d1", "1", "Program");
+  });
+
   it("lets someone choose one of an enum's values and sends that", async () => {
     const write = vi.fn();
     const mode = dp("work_mode", { type: "Enum", value: "eco", values: { range: ["eco", "fast"] } });

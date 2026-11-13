@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Copy, Pencil, Pin, WifiOff } from "lucide-react";
 import { toast } from "sonner";
-import { api, type Device } from "@/api";
+import { api, type DataPoint, type Device } from "@/api";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -100,6 +100,40 @@ export function DeviceDrawer({ device, room, pinned, onPins, write, onClose, roo
   const [editing, setEditing] = useState(false);
   const onCard = shownOnCard(device).map((d) => d.dp);
   const values = (device.dps ?? []).filter((d) => d.code !== "unavailable");
+  const everyday = values.filter((d) => !d.advanced);
+  const advanced = values.filter((d) => d.advanced);
+  const valueRow = (d: DataPoint) => {
+    const isPinned = pinned.includes(d.dp);
+    const always = onCard.includes(d.dp);
+    return (
+      <li key={d.dp} className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-sm">
+        <span className="min-w-0 flex-1">
+          <span className="block">{label(d.code)}</span>
+          <span className="block font-mono text-xs text-muted-foreground">{d.code}</span>
+        </span>
+        <Control device={device} dp={d} write={write} />
+        {always ? (
+          // Always shown, so it reads as pinned and can't be unpinned.
+          <span role="img" aria-label="Always on the card" title="Always on the card" className="flex size-9 shrink-0 items-center justify-center text-muted-foreground">
+            <Pin aria-hidden className="size-4 fill-current" />
+          </span>
+        ) : onPins ? (
+          <Button
+            variant={isPinned ? "secondary" : "ghost"} size="icon" className="size-9 shrink-0"
+            aria-pressed={isPinned} aria-label={isPinned ? `Unpin ${label(d.code)} from the card` : `Pin ${label(d.code)} to the card`}
+            onClick={() => toggle(d.dp)}
+          >
+            <Pin aria-hidden className={isPinned ? "fill-current text-primary" : undefined} />
+          </Button>
+        ) : isPinned ? (
+          <Pin aria-label="Pinned" className="size-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <span className="w-9" />
+        )}
+      </li>
+    );
+  };
+
   const note = findDp(device, "unavailable")?.value;
   const copyId = async () => {
     try {
@@ -163,39 +197,15 @@ export function DeviceDrawer({ device, room, pinned, onPins, write, onClose, roo
             {values.length === 0 ? (
               <p className="py-2 text-sm text-muted-foreground">It hasn't reported anything yet.</p>
             ) : (
-              <ul className="divide-y divide-border/60">
-                {values.map((d) => {
-                  const isPinned = pinned.includes(d.dp);
-                  const always = onCard.includes(d.dp);
-                  return (
-                    <li key={d.dp} className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-sm">
-                      <span className="min-w-0 flex-1">
-                        <span className="block">{label(d.code)}</span>
-                        <span className="block font-mono text-xs text-muted-foreground">{d.code}</span>
-                      </span>
-                      <Control device={device} dp={d} write={write} />
-                      {always ? (
-                        // Always shown, so it reads as pinned and can't be unpinned.
-                        <span role="img" aria-label="Always on the card" title="Always on the card" className="flex size-9 shrink-0 items-center justify-center text-muted-foreground">
-                          <Pin aria-hidden className="size-4 fill-current" />
-                        </span>
-                      ) : onPins ? (
-                        <Button
-                          variant={isPinned ? "secondary" : "ghost"} size="icon" className="size-9 shrink-0"
-                          aria-pressed={isPinned} aria-label={isPinned ? `Unpin ${label(d.code)} from the card` : `Pin ${label(d.code)} to the card`}
-                          onClick={() => toggle(d.dp)}
-                        >
-                          <Pin aria-hidden className={isPinned ? "fill-current text-primary" : undefined} />
-                        </Button>
-                      ) : isPinned ? (
-                        <Pin aria-label="Pinned" className="size-4 shrink-0 text-muted-foreground" />
-                      ) : (
-                        <span className="w-9" />
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              <>
+                <ul className="divide-y divide-border/60">{everyday.map(valueRow)}</ul>
+                {advanced.length > 0 && (
+                  <details className="pt-1">
+                    <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium">Advanced settings ({advanced.length})</summary>
+                    <ul className="divide-y divide-border/60">{advanced.map(valueRow)}</ul>
+                  </details>
+                )}
+              </>
             )}
           </section>
         </div>

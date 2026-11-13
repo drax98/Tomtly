@@ -54,9 +54,20 @@ type Block struct {
 	Options []string        `json:"options,omitempty"`
 	Action  string          `json:"action,omitempty"`
 	Args    json.RawMessage `json:"args,omitempty"`
+	// Title and Blocks belong to a dialog: its heading and the form it opens.
+	Title  string  `json:"title,omitempty"`
+	Blocks []Block `json:"blocks,omitempty"`
+	// Columns is how many inputs a dialog's form lays side by side: 1, the default, or 2.
+	Columns int `json:"columns,omitempty"`
 }
 
 var tones = map[string]bool{"": true, "good": true, "warn": true, "bad": true}
+
+// clock is a time input's value, "HH:MM".
+var clock = regexp.MustCompile(`^([01][0-9]|2[0-3]):[0-5][0-9]$`)
+
+// inDialog is what a dialog's form may hold: words and inputs, never a device, a button or another dialog.
+var inDialog = map[string]bool{"group": true, "text": true, "rows": true, "number": true, "toggle": true, "select": true, "time": true}
 
 // Clean checks what render returned, a list of blocks, and writes it again with only the fields the page knows.
 func Clean(raw []byte) (json.RawMessage, error) {
@@ -86,7 +97,7 @@ func Clean(raw []byte) (json.RawMessage, error) {
 }
 
 func check(b *Block) error {
-	for _, s := range []string{b.Label, b.Unit, b.Device, b.Code} {
+	for _, s := range []string{b.Label, b.Unit, b.Device, b.Code, b.Title} {
 		if utf8.RuneCountInString(s) > maxString {
 			return fmt.Errorf("a label, unit or id is up to %d characters", maxString)
 		}
@@ -129,9 +140,12 @@ func check(b *Block) error {
 		if b.Min != nil && b.Max != nil && *b.Min >= *b.Max {
 			return errors.New("a device block's min is below its max")
 		}
-	case "number", "toggle", "select":
+	case "number", "toggle", "select", "time":
 		if !Name.MatchString(b.Name) {
 			return errors.New("an input needs a name: letters, digits, - and _, starting with a letter")
+		}
+		if err := checkTime(b); err != nil {
+			return err
 		}
 		if b.Type == "select" && (len(b.Options) == 0 || len(b.Options) > maxOptions) {
 			return fmt.Errorf("a select needs 1 to %d options", maxOptions)
@@ -142,14 +156,62 @@ func check(b *Block) error {
 			}
 		}
 	case "button":
-		if b.Label == "" || !Name.MatchString(b.Action) {
-			return errors.New("a button needs a label and an action: letters, digits, - and _, starting with a letter")
+		return checkPress(b, "a button")
+	case "dialog":
+		if err := checkPress(b, "a dialog"); err != nil {
+			return err
 		}
-		if len(b.Args) > 0 && (len(b.Args) > maxArgs || !bytes.HasPrefix(bytes.TrimSpace(b.Args), []byte("{"))) {
-			return fmt.Errorf("args is an object of up to %d bytes", maxArgs)
+		if b.Columns < 0 || b.Columns > 2 {
+			return errors.New("a dialog's columns is 1 or 2")
 		}
+		return checkForm(b.Blocks)
 	default:
-		return fmt.Errorf("unknown type %q: use group, text, stat, rows, device, number, toggle, select or button", b.Type)
+		return fmt.Errorf("unknown type %q: use group, text, stat, rows, device, number, toggle, select, time, button or dialog", b.Type)
+	}
+	if len(b.Blocks) > 0 || b.Columns != 0 {
+		return errors.New("only a dialog holds blocks and columns")
+	}
+	return nil
+}
+
+// checkPress checks what a button and a dialog share: a label, and an action with optional args.
+func checkPress(b *Block, what string) error {
+	if b.Label == "" || !Name.MatchString(b.Action) {
+		return fmt.Errorf("%s needs a label and an action: letters, digits, - and _, starting with a letter", what)
+	}
+	if len(b.Args) > 0 && (len(b.Args) > maxArgs || !bytes.HasPrefix(bytes.TrimSpace(b.Args), []byte("{"))) {
+		return fmt.Errorf("args is an object of up to %d bytes", maxArgs)
+	}
+	return nil
+}
+
+// checkForm checks a dialog's blocks: 1 to maxBlocks of what inDialog allows.
+func checkForm(blocks []Block) error {
+	if len(blocks) == 0 || len(blocks) > maxBlocks {
+		return fmt.Errorf("a dialog holds 1 to %d blocks", maxBlocks)
+	}
+	for i := range blocks {
+		if !inDialog[blocks[i].Type] {
+			return fmt.Errorf("a dialog can't hold a %q block", blocks[i].Type)
+		}
+		if err := check(&blocks[i]); err != nil {
+			return fmt.Errorf("dialog block %d: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
+// checkTime checks a time input: its value, if given, is "HH:MM", and its step is whole minutes.
+func checkTime(b *Block) error {
+	if b.Type != "time" {
+		return nil
+	}
+	var value string
+	if len(b.Value) > 0 && (json.Unmarshal(b.Value, &value) != nil || !clock.MatchString(value)) {
+		return errors.New(`a time's value is "HH:MM"`)
+	}
+	if b.Step != nil && (*b.Step < 1 || *b.Step > 720 || *b.Step != float64(int(*b.Step))) {
+		return errors.New("a time's step is whole minutes, 1 to 720")
 	}
 	return nil
 }
@@ -159,15 +221,15 @@ func scalar(v json.RawMessage) bool {
 	return len(v) == 0 || (v[0] != '{' && v[0] != '[')
 }
 
-// HasAction says whether a button in the rendered blocks asks for this action. A click may only ask for what the
-// widget shows, so a widget can't be used to reach an extension's other actions.
+// HasAction says whether a button or a dialog in the rendered blocks asks for this action. A click may only ask for
+// what the widget shows, so a widget can't be used to reach an extension's other actions.
 func HasAction(rendered json.RawMessage, action string) bool {
 	var blocks []Block
 	if json.Unmarshal(rendered, &blocks) != nil {
 		return false
 	}
 	for _, b := range blocks {
-		if b.Type == "button" && b.Action == action {
+		if (b.Type == "button" || b.Type == "dialog") && b.Action == action {
 			return true
 		}
 	}

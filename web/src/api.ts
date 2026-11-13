@@ -8,6 +8,8 @@ export interface DataPoint {
   scale: number;
   writable: boolean;
   value: Value | null;
+  /** A setting rarely changed, folded away under the everyday values. */
+  advanced?: boolean;
 }
 
 export interface Device {
@@ -291,7 +293,7 @@ export type WidgetTone = "good" | "warn" | "bad";
 
 /** One piece of a widget, as sdk/home.d.ts describes it. What a field means depends on type. */
 export interface WidgetBlock {
-  type: "group" | "text" | "stat" | "rows" | "device" | "number" | "toggle" | "select" | "button";
+  type: "group" | "text" | "stat" | "rows" | "device" | "number" | "toggle" | "select" | "time" | "button" | "dialog";
   label?: string;
   text?: string;
   value?: Value | null;
@@ -307,6 +309,10 @@ export interface WidgetBlock {
   options?: string[];
   action?: string;
   args?: Record<string, unknown>;
+  /** A dialog's heading, the form it opens, and how many inputs sit side by side in it. */
+  title?: string;
+  blocks?: WidgetBlock[];
+  columns?: number;
 }
 
 /** A widget a script or an extension offers, as last drawn. */

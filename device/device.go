@@ -25,6 +25,8 @@ type DP struct {
 	Scale    int            `json:"scale"`
 	Writable bool           `json:"writable"`
 	Value    any            `json:"value"`
+	// Advanced is a setting rarely changed, such as a calibration: the page folds it away under the everyday values.
+	Advanced bool `json:"advanced,omitempty"`
 }
 
 // Device is one device as the API, page and automations see it. It must never carry credentials.

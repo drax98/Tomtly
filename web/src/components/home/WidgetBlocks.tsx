@@ -1,7 +1,8 @@
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useState, type FormEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import { api, type DataPoint, type Device, type RenderedWidget, type Value, type WidgetBlock, type WidgetTone } from "@/api";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,7 +18,8 @@ const tone = (t?: WidgetTone) => (t ? TONES[t] : undefined);
 const shown = (v: Value | null | undefined) =>
   v === null || v === undefined ? "–" : typeof v === "boolean" ? (v ? "Yes" : "No") : typeof v === "number" ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : v;
 
-const CONTROLS = new Set(["number", "toggle", "select", "button"]);
+const CONTROLS = new Set(["number", "toggle", "select", "time", "button", "dialog"]);
+const INPUTS = new Set(["number", "toggle", "select", "time"]);
 
 /** A device block's min and max, given in the units shown, narrow the device's own range: never past it. */
 function narrowed(dp: DataPoint, min?: number, max?: number): DataPoint {
@@ -50,6 +52,133 @@ function sections(blocks: WidgetBlock[]) {
   return out.filter((s, i) => i > 0 || s.blocks.length > 0);
 }
 
+/** What an input holds before anyone changes it. */
+const startValue = (b: WidgetBlock): unknown => (b.type === "select" ? (b.value ?? b.options?.[0]) : b.type === "toggle" ? (b.value ?? false) : (b.value ?? ""));
+
+/** The inputs among blocks by name, as an action gets them: an empty one is null. */
+function collect(blocks: WidgetBlock[], valueOf: (b: WidgetBlock) => unknown): Record<string, unknown> {
+  const input: Record<string, unknown> = {};
+  for (const b of blocks) if (b.name && INPUTS.has(b.type)) input[b.name] = valueOf(b) === "" ? null : valueOf(b);
+  return input;
+}
+
+/** Asks the widget's owner to run an action, and says how it went. Resolves to whether it ran. */
+async function press(widget: RenderedWidget, label: string, action: string, input: Record<string, unknown>): Promise<boolean> {
+  try {
+    const { live } = await api.pressWidget(widget.key, action, input);
+    if (live) toast.success(`${label}: done`);
+    else toast.info(`${widget.from} is practising`, { description: "It only logged what it would do. Switch it live on the Automations page to make it act." });
+    return true;
+  } catch (e) {
+    toast.error(`${label} didn't work`, { description: messageOf(e, "Try again.") });
+    return false;
+  }
+}
+
+/** One input of a widget or a dialog. */
+function InputField({ b, id, value, onChange }: { b: WidgetBlock; id: string; value: unknown; onChange: (value: unknown) => void }) {
+  switch (b.type) {
+    case "number":
+      return (
+        <div className="space-y-1.5">
+          <Label htmlFor={id}>{b.label ?? b.name}{b.unit && <span className="text-muted-foreground"> ({b.unit})</span>}</Label>
+          <Input id={id} type="number" inputMode="decimal" min={b.min} max={b.max} step={b.step ?? "any"} className="min-h-11 w-32"
+            value={String(value ?? "")} onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))} />
+        </div>
+      );
+    case "toggle":
+      return (
+        <div className="flex min-h-11 items-center gap-2">
+          <Switch id={id} checked={value === true} onCheckedChange={onChange} />
+          <Label htmlFor={id}>{b.label ?? b.name}</Label>
+        </div>
+      );
+    case "time":
+      return (
+        <div className="space-y-1.5">
+          <Label htmlFor={id}>{b.label ?? b.name}</Label>
+          <Input id={id} type="time" step={(b.step ?? 1) * 60} className="min-h-11 w-32" value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} />
+        </div>
+      );
+    default:
+      return (
+        <div className="space-y-1.5">
+          <Label htmlFor={id}>{b.label ?? b.name}</Label>
+          <Select value={String(value ?? "")} onValueChange={onChange}>
+            <SelectTrigger id={id} className="h-11 min-w-36"><SelectValue /></SelectTrigger>
+            <SelectContent>{b.options?.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      );
+  }
+}
+
+/** A dialog block: a button that opens its form, whose Save runs its action with the form's values and its args. */
+function WidgetDialog({ widget, b, disabled, onPressed }: { widget: RenderedWidget; b: WidgetBlock; disabled: boolean; onPressed?: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [values, setValues] = useState<Record<string, unknown>>({});
+  const [busy, setBusy] = useState(false);
+  const form = b.blocks ?? [];
+  const valueOf = (i: WidgetBlock) => (i.name! in values ? values[i.name!] : startValue(i));
+  const show = (next: boolean) => {
+    if (next) setValues({}); // each opening starts from what the widget shows now
+    setOpen(next);
+  };
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    const ran = await press(widget, b.label!, b.action!, { ...collect(form, valueOf), ...b.args });
+    setBusy(false);
+    if (!ran) return;
+    setOpen(false);
+    onPressed?.();
+  };
+  return (
+    <>
+      <Button variant="outline" className="min-h-11" disabled={disabled} onClick={() => show(true)}>{b.label}</Button>
+      <Dialog open={open} onOpenChange={show}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <form className="space-y-4" onSubmit={(e) => void save(e)}>
+            <DialogHeader>
+              <DialogTitle>{b.title ?? b.label}</DialogTitle>
+              {b.text && <DialogDescription>{b.text}</DialogDescription>}
+            </DialogHeader>
+            {sections(form).map((s, si) => (
+              <section key={si} aria-label={s.title} className="space-y-2">
+                {s.title && <h3 className="text-sm font-medium">{s.title}</h3>}
+                <div className={cn("items-end gap-3", b.columns === 2 ? "grid grid-cols-2" : "flex flex-wrap")}>
+                  {s.blocks.map((i, n) => {
+                    if (i.type === "text") return <p key={n} className={cn("col-span-full w-full text-sm", tone(i.tone))}>{i.text}</p>;
+                    if (i.type === "rows") return <div key={n} className="col-span-full"><Rows rows={i.rows} /></div>;
+                    return <InputField key={n} b={i} id={`${widget.key}-${b.action}-${i.name}`} value={valueOf(i)} onChange={(v) => setValues((now) => ({ ...now, [i.name!]: v }))} />;
+                  })}
+                </div>
+              </section>
+            ))}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => show(false)}>Cancel</Button>
+              <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function Rows({ rows }: { rows: WidgetBlock["rows"] }) {
+  return (
+    <dl className="w-full divide-y divide-border/60 text-sm">
+      {rows?.map((r, i) => (
+        <div key={i} className="flex items-baseline justify-between gap-3 py-1.5">
+          <dt className="min-w-0 break-words text-muted-foreground">{r.label}</dt>
+          <dd className={cn("shrink-0 text-right tabular-nums", tone(r.tone))}>{shown(r.value)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 interface Props {
   widget: RenderedWidget;
   devices: Device[];
@@ -63,60 +192,24 @@ export function WidgetBlocks({ widget, devices, write, onPressed }: Props) {
   const [inputs, setInputs] = useState<Record<string, unknown>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const blocks = widget.blocks ?? [];
-  const valueOf = (b: WidgetBlock) => (b.name! in inputs ? inputs[b.name!] : b.type === "select" ? (b.value ?? b.options?.[0]) : b.type === "toggle" ? (b.value ?? false) : (b.value ?? ""));
+  const valueOf = (b: WidgetBlock) => (b.name! in inputs ? inputs[b.name!] : startValue(b));
   const set = (name: string, value: unknown) => setInputs((now) => ({ ...now, [name]: value }));
 
-  const press = async (b: WidgetBlock) => {
-    const input: Record<string, unknown> = {};
-    for (const i of blocks) if (i.name && i.type !== "button") input[i.name] = valueOf(i) === "" ? null : valueOf(i);
+  const pressButton = async (b: WidgetBlock) => {
     setBusy(b.action!);
-    try {
-      const { live } = await api.pressWidget(widget.key, b.action!, { ...input, ...b.args });
-      if (live) toast.success(`${b.label}: done`);
-      else toast.info(`${widget.from} is practising`, { description: "It only logged what it would do. Switch it live on the Automations page to make it act." });
-      onPressed?.();
-    } catch (e) {
-      toast.error(`${b.label} didn't work`, { description: messageOf(e, "Try again.") });
-    } finally {
-      setBusy(null);
-    }
+    const ran = await press(widget, b.label!, b.action!, { ...collect(blocks, valueOf), ...b.args });
+    setBusy(null);
+    if (ran) onPressed?.();
   };
 
   const control = (b: WidgetBlock, i: number): ReactNode => {
-    const id = `${widget.key}-${b.name ?? i}`;
-    switch (b.type) {
-      case "number":
-        return (
-          <div key={i} className="space-y-1.5">
-            <Label htmlFor={id}>{b.label ?? b.name}{b.unit && <span className="text-muted-foreground"> ({b.unit})</span>}</Label>
-            <Input id={id} type="number" inputMode="decimal" min={b.min} max={b.max} step={b.step ?? "any"} className="min-h-11 w-32"
-              value={String(valueOf(b) ?? "")} onChange={(e) => set(b.name!, e.target.value === "" ? "" : Number(e.target.value))} />
-          </div>
-        );
-      case "toggle":
-        return (
-          <div key={i} className="flex min-h-11 items-center gap-2">
-            <Switch id={id} checked={valueOf(b) === true} onCheckedChange={(on) => set(b.name!, on)} />
-            <Label htmlFor={id}>{b.label ?? b.name}</Label>
-          </div>
-        );
-      case "select":
-        return (
-          <div key={i} className="space-y-1.5">
-            <Label htmlFor={id}>{b.label ?? b.name}</Label>
-            <Select value={String(valueOf(b) ?? "")} onValueChange={(v) => set(b.name!, v)}>
-              <SelectTrigger id={id} className="h-11 min-w-36"><SelectValue /></SelectTrigger>
-              <SelectContent>{b.options?.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-        );
-      default:
-        return (
-          <Button key={i} className={cn("min-h-11", b.tone === "bad" && "bg-destructive text-destructive-foreground hover:bg-destructive/90")} disabled={busy !== null} onClick={() => void press(b)}>
-            {busy === b.action ? "Working…" : b.label}
-          </Button>
-        );
-    }
+    if (INPUTS.has(b.type)) return <InputField key={i} b={b} id={`${widget.key}-${b.name ?? i}`} value={valueOf(b)} onChange={(v) => set(b.name!, v)} />;
+    if (b.type === "dialog") return <WidgetDialog key={i} widget={widget} b={b} disabled={busy !== null} onPressed={onPressed} />;
+    return (
+      <Button key={i} className={cn("min-h-11", b.tone === "bad" && "bg-destructive text-destructive-foreground hover:bg-destructive/90")} disabled={busy !== null} onClick={() => void pressButton(b)}>
+        {busy === b.action ? "Working…" : b.label}
+      </Button>
+    );
   };
 
   if (widget.error) return <ErrorText>This widget failed to draw: {widget.error}</ErrorText>;
@@ -144,18 +237,7 @@ export function WidgetBlocks({ widget, devices, write, onPressed }: Props) {
         }
         const b = g.blocks[0];
         if (b.type === "text") return <p key={gi} className={cn("whitespace-pre-line break-words text-sm", tone(b.tone))}>{b.text}</p>;
-        if (b.type === "rows") {
-          return (
-            <dl key={gi} className="divide-y divide-border/60 text-sm">
-              {b.rows?.map((r, i) => (
-                <div key={i} className="flex items-baseline justify-between gap-3 py-1.5">
-                  <dt className="min-w-0 break-words text-muted-foreground">{r.label}</dt>
-                  <dd className={cn("shrink-0 text-right tabular-nums", tone(r.tone))}>{shown(r.value)}</dd>
-                </div>
-              ))}
-            </dl>
-          );
-        }
+        if (b.type === "rows") return <Rows key={gi} rows={b.rows} />;
         const device = devices.find((d) => d.id === b.device);
         const dp = device && findDp(device, b.code!);
         if (!device || !dp) return <p key={gi} className="text-sm text-muted-foreground">{b.label ?? b.device}: not found</p>;

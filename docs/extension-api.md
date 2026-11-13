@@ -82,6 +82,7 @@ A value:
 | `range` | Choices for an `Enum` or `Action` |
 | `min`, `max`, `step`, `unit` | Limits for an `Integer` |
 | `scale` | How to display an `Integer`: `205` with scale `1` reads as `20.5` |
+| `advanced` | A setting rarely changed, like a calibration or a hysteresis: the device screen folds it under **Advanced settings**. An `Enum` whose current value isn't in `range` shows it, but it can't be chosen, which fits a state the device enters by itself, such as a temporary override |
 
 ### `actions`
 
