@@ -10,21 +10,27 @@ test.beforeEach(async () => {
   await peopleAndDevices(api);
 });
 
-test("an integration's card says it's healthy, what it can reach and how it's set up", async ({ page }) => {
+test("an integration's card is a summary, and its page says what it can reach and how it's set up", async ({ page }) => {
   await open(page, OWNER, "/integrations");
   const fake = card(page, "Fake Home");
   await expect(fake.getByText("Running", { exact: true })).toBeVisible();
   await expect(fake.getByText("Fake devices for the end-to-end tests.")).toBeVisible();
   await expect(fake.getByText("5 of 6")).toBeVisible();
-  await expect(fake.getByText("What it can reach")).toBeVisible();
-  await expect(fake.getByText("Can reach 10.77.0.20:9000 (the setting host), which may be on your local network")).toBeVisible();
-  await expect(fake.getByText("Any device on your local network")).toBeVisible();
-  await expect(fake.getByText("Raw TCP and UDP connections")).toBeVisible();
-  await expect(fake.getByText("Configured: Device address")).toBeVisible();
-  await expect(fake.getByText(FAKE_HOME)).toBeVisible();
+  await expect(fake.getByText("Version 1.0.0")).toBeVisible();
+  await expect(fake.getByText("What it can reach")).toHaveCount(0);
+  await expect(fake.getByRole("button", { name: "Edit settings" })).toHaveCount(0);
+
+  await fake.getByText("5 of 6").click(); // anywhere on the card opens its page
+  await expect(page).toHaveURL(/\/integrations\/fake-home$/);
+  await expect(page.getByText("What it can reach")).toBeVisible();
+  await expect(page.getByText("Can reach 10.77.0.20:9000 (the setting host), which may be on your local network")).toBeVisible();
+  await expect(page.getByText("Any device on your local network")).toBeVisible();
+  await expect(page.getByText("Raw TCP and UDP connections")).toBeVisible();
+  await expect(page.getByText("Configured: Device address")).toBeVisible();
+  await expect(page.getByText(FAKE_HOME, { exact: true })).toBeVisible();
   // Added on the page, like every extension, so it's changed there too.
-  await expect(fake.getByRole("button", { name: "Edit settings" })).toBeVisible();
-  await expect(fake.getByRole("button", { name: "Upload new version" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit settings" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Upload new version" })).toBeVisible();
 });
 
 test("opening one shows its devices and what the scan found", async ({ page }) => {

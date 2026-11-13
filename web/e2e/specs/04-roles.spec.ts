@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { addPerson, apiFromBrowser, approve, chooseOption, FAKE_HOME, nav, open, OWNER, ownerApi, peopleAndDevices, person } from "../support/home";
+import { addPerson, apiFromBrowser, approve, card, chooseOption, FAKE_HOME, nav, open, OWNER, ownerApi, peopleAndDevices, person } from "../support/home";
 import { deviceValue, freshHome } from "../support/stack";
 
 const WRITE = "/api/devices/fake-home:lamp/dps/switch";
@@ -131,7 +131,8 @@ test("an administrator sees the administration pages and every control", async (
   await expect(nav(page).getByRole("link", { name: "Activity log" })).toBeVisible();
   await nav(page).getByRole("link", { name: "Integrations" }).click();
   await expect(page.getByRole("button", { name: /^Add integration/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Remove" })).toBeVisible();
+  await card(page, "Fake Home").getByRole("button", { name: "Open" }).click();
+  await expect(page.getByRole("button", { name: "Remove", exact: true })).toBeVisible();
   await nav(page).getByRole("link", { name: "Automations" }).click();
   await expect(page.getByRole("button", { name: /^Approve: / }).first()).toBeVisible();
 });

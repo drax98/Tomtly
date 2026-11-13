@@ -150,9 +150,11 @@ test("adding from GitHub by a pasted address, then updating from GitHub", async 
 
   const lamp = card(page, "GitHub Lamp");
   await expect(lamp.getByText("Running", { exact: true })).toBeVisible();
-  await expect(lamp.getByText("github:e2e/gh-lamp@v1.0.0 · 1.0.0")).toBeVisible();
+  await expect(lamp.getByText("Version 1.0.0")).toBeVisible();
+  await lamp.getByRole("button", { name: "Open" }).click();
+  await expect(page.getByText("github:e2e/gh-lamp@v1.0.0", { exact: true })).toBeVisible();
 
-  await lamp.getByRole("button", { name: "Update from GitHub" }).click();
+  await page.getByRole("button", { name: "Update from GitHub" }).click();
   const update = page.getByRole("dialog", { name: "Update from GitHub" });
   const check = update.getByRole("button", { name: "Check" });
   await expect(check).toBeDisabled();
@@ -162,7 +164,8 @@ test("adding from GitHub by a pasted address, then updating from GitHub", async 
   await expect(replace.getByText("It asks for the same access as before.")).toBeVisible();
   await replace.getByRole("button", { name: "Replace" }).click();
   await expect(page.getByText("Replaced. It's restarting.")).toBeVisible();
-  await expect(lamp.getByText("github:e2e/gh-lamp@v1.1.0 · 1.1.0")).toBeVisible();
+  await expect(page.getByText("github:e2e/gh-lamp@v1.1.0", { exact: true })).toBeVisible();
+  await expect(page.getByRole("definition").filter({ hasText: /^1\.1\.0$/ })).toBeVisible();
 });
 
 test("editing settings: a value can change, a secret stays unless typed, and it restarts", async ({ page }) => {
@@ -200,14 +203,14 @@ test("uploading a new version: same access just restarts, more access waits, ano
   await refused.getByRole("button", { name: "Replace" }).click();
   await expect(refused.getByRole("alert")).toBeVisible();
   await refused.getByRole("button", { name: "Cancel" }).click();
-  await expect(tide.getByText("· 1.0.0")).toBeVisible();
+  await expect(tide.getByRole("definition").filter({ hasText: /^1\.0\.0$/ })).toBeVisible();
 
   await picker.setInputFiles(join(uploads, "tide-plugin-v2.ts"));
   const same = page.getByRole("dialog", { name: "Replace Tide Plugin 1.0.0 with version 1.1.0?" });
   await expect(same.getByText("It asks for the same access as before.")).toBeVisible();
   await same.getByRole("button", { name: "Replace" }).click();
   await expect(page.getByText("Replaced. It's restarting.")).toBeVisible();
-  await expect(tide.getByText("· 1.1.0")).toBeVisible();
+  await expect(tide.getByRole("definition").filter({ hasText: /^1\.1\.0$/ })).toBeVisible();
   await expect(tide.getByText("Running", { exact: true })).toBeVisible();
   await tide.getByRole("button", { name: "Details for scripts" }).click();
   await expect(tide.getByText('"version": "1.1.0"')).toBeVisible();
@@ -223,7 +226,7 @@ test("uploading a new version: same access just restarts, more access waits, ano
   await tide.getByRole("button", { name: "Approve access" }).click();
   await pressConfirm(page, "Approve and start");
   await expect(tide.getByText("Running", { exact: true })).toBeVisible();
-  await expect(tide.getByText("· 2.0.0")).toBeVisible();
+  await expect(tide.getByRole("definition").filter({ hasText: /^2\.0\.0$/ })).toBeVisible();
 });
 
 test("removing one added on the page: its settings go too, and it isn't offered back", async ({ page }) => {
