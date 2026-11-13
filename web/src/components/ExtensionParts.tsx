@@ -16,6 +16,48 @@ import { cn, messageOf } from "@/lib/utils";
 /** An uploaded package's source is a hash, which means nothing to a person. */
 export const describeSource = (source: string) => (source.startsWith("upload:") ? "Uploaded file" : source);
 
+/** The page on GitHub a github:owner/repo[/folder]@ref source comes from, or undefined for any other source. */
+export function githubUrl(source: string): string | undefined {
+  const m = /^github:([^/@\s]+)\/([^/@\s]+)(?:\/([^@\s]+))?@(\S+)$/.exec(source);
+  if (!m) return undefined;
+  const [, owner, repo, folder, ref] = m;
+  return `https://github.com/${owner}/${repo}/tree/${encodeURIComponent(ref)}${folder ? `/${folder}` : ""}`;
+}
+
+/** Marks a list entry the marketplace has a newer version of; the update itself is on its own page. */
+export function UpdateBadge({ extension }: { extension?: ExtensionStatus }) {
+  if (!extension?.marketUpdate) return null;
+  return <Badge variant="secondary" className="shrink-0 bg-primary/15 text-primary"><ArrowUpCircle className="size-3.5" aria-hidden />Update {extension.marketUpdate.version}</Badge>;
+}
+
+/** Version, where it came from and its pages: GitHub, the marketplace and its own homepage, when it has them. */
+function Origin({ extension, listing }: { extension: ExtensionStatus; listing: string | null }) {
+  const github = githubUrl(extension.source);
+  const link = "inline-flex min-h-11 items-center underline sm:min-h-0";
+  return (
+    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+      <dt className="text-muted-foreground">Version</dt>
+      <dd className="tabular-nums">{extension.version ?? "—"}</dd>
+      <dt className="text-muted-foreground">From</dt>
+      <dd className="break-all font-mono text-xs">{describeSource(extension.source)}</dd>
+      {(github || listing || extension.homepage) && (
+        <>
+          <dt className="text-muted-foreground">Links</dt>
+          <dd className="flex flex-wrap gap-x-3">
+            {github && <a className={link} href={github} target="_blank" rel="noreferrer">GitHub</a>}
+            {listing && (
+              <a className={link} href={`/marketplace/${encodeURIComponent(listing)}`} onClick={(e) => { e.preventDefault(); navigate("marketplace", listing); }}>
+                Marketplace
+              </a>
+            )}
+            {extension.homepage && <a className={link} href={extension.homepage} target="_blank" rel="noreferrer">Homepage</a>}
+          </dd>
+        </>
+      )}
+    </dl>
+  );
+}
+
 const NO_ACCESS = "No access to anything outside itself";
 
 /** A repo's owner can change it whenever they like. Only the marketplace's copies are checked by anyone but you. */
@@ -326,19 +368,7 @@ export function ExtensionDetails({ extension, onRemoved, onApproved, onChanged }
         </Alert>
       )}
 
-      <p className="break-all font-mono text-xs text-muted-foreground">{describeSource(extension.source)}{extension.version && ` · ${extension.version}`}</p>
-
-      {listing && (
-        <p>
-          <a
-            className="inline-flex min-h-11 items-center underline sm:min-h-0"
-            href={`/marketplace/${encodeURIComponent(listing)}`}
-            onClick={(e) => { e.preventDefault(); navigate("marketplace", listing); }}
-          >
-            See in the marketplace
-          </a>
-        </p>
-      )}
+      <Origin extension={extension} listing={listing} />
 
       {manage && (
         <div className="flex flex-wrap gap-2">

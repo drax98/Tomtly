@@ -69,10 +69,41 @@ describe("IntegrationsPage open", () => {
     expect(go).toHaveBeenCalledWith("integrations", "hue");
   });
 
+  it("opens an added integration from anywhere on its card, once, and a built-in one not at all", async () => {
+    const go = vi.fn();
+    serve([{ ...hue, extension: addedExtension }, { ...empty }]);
+    show("admin", go);
+    fireEvent.click(await screen.findByText("Lights in the hall"));
+    expect(go).toHaveBeenCalledTimes(1);
+    expect(go).toHaveBeenCalledWith("integrations", "hue");
+    fireEvent.click(screen.getByText("Smart Life"));
+    expect(go).toHaveBeenCalledTimes(1);
+  });
+
   it("warns on an integration that needs approval and names its state", async () => {
     serve([{ ...hue, extension: { ...addedExtension, running: false, needsApproval: true } }]);
     show();
     expect(await screen.findByText("Needs your OK")).toBeTruthy();
+  });
+
+  it("keeps the list to a summary: no settings or update buttons, and a badge when an update waits", async () => {
+    serve([{ ...hue, extension: { ...addedExtension, version: "1.0.0", marketUpdate: { version: "1.1.0" } } }]);
+    show();
+    expect(await screen.findByText("Update 1.1.0")).toBeTruthy();
+    for (const name of ["Edit settings", "Upload new version", "Update from GitHub", "Remove", "Update to 1.1.0"]) {
+      expect(screen.queryByRole("button", { name })).toBeNull();
+    }
+    expect(screen.getByRole("button", { name: "Open" })).toBeTruthy();
+    expect(screen.getByText("Version 1.0.0")).toBeTruthy();
+    expect(screen.queryByText("What it can reach")).toBeNull();      // access, risks and settings are on its own page
+    expect(screen.queryByText(/^Configured:/)).toBeNull();
+  });
+
+  it("shows no update badge when there's nothing newer", async () => {
+    serve([{ ...hue, extension: addedExtension }]);
+    show();
+    await screen.findByText("Hue bridge");
+    expect(screen.queryByText(/^Update /)).toBeNull();
   });
 
   it("labels a built-in integration as built in, and doesn't let it be opened", async () => {

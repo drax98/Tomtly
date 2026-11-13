@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AddExtension } from "@/components/AddExtension";
-import { ExtensionDetails, ExtensionState } from "@/components/ExtensionParts";
+import { ExtensionState, UpdateBadge } from "@/components/ExtensionParts";
 import { IntegrationPage } from "@/components/IntegrationPage";
 import { EmptyState, PageHeader } from "@/components/PageHeader";
 import { useAuth } from "@/lib/auth";
@@ -13,18 +13,25 @@ import { usePoll } from "@/lib/useDevices";
 import type { Page } from "@/lib/route";
 import { cn } from "@/lib/utils";
 
-function IntegrationCard({ integration, onChanged, onOpen }: { integration: Integration; onChanged: () => void; onOpen: () => void }) {
+/** A summary: how it stands and whether an update waits. Its settings, versions and buttons are on its own page. */
+function IntegrationCard({ integration, onOpen }: { integration: Integration; onOpen: () => void }) {
   const { name, description, devices, extension } = integration;
   const online = devices.filter((d) => d.online).length;
   const attention = extension && (extension.error || extension.needsApproval || extension.violations?.length);
+  const openable = Boolean(extension?.id);
   return (
-    <Card className={cn("gap-3", attention && "border-warn/50")}>
+    // The whole card opens its page; the Open button is there for the keyboard, and its click reaches the card.
+    <Card className={cn("gap-3", attention && "border-warn/50", openable && "cursor-pointer transition-colors hover:border-primary/40")} onClick={openable ? onOpen : undefined}>
       <CardHeader>
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-base font-medium">{name}</CardTitle>
-          <ExtensionState extension={extension} />
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <UpdateBadge extension={extension} />
+            <ExtensionState extension={extension} />
+          </div>
         </div>
         {description && <CardDescription>{description}</CardDescription>}
+        {extension?.version && <p className="text-xs text-muted-foreground tabular-nums">Version {extension.version}</p>}
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm">
@@ -32,8 +39,7 @@ function IntegrationCard({ integration, onChanged, onOpen }: { integration: Inte
             <><span className={cn("mr-2 inline-block size-2 rounded-full", online === devices.length ? "bg-good" : "bg-warn")} aria-hidden /><span className="tabular-nums">{online} of {devices.length}</span> online</>
           )}
         </p>
-        {extension ? <ExtensionDetails extension={extension} onRemoved={onChanged} onApproved={onChanged} onChanged={onChanged} /> : null}
-        <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9" disabled={!extension?.id} onClick={onOpen}>Open</Button>
+        <Button variant="outline" size="sm" className="min-h-11 sm:min-h-9" disabled={!openable}>Open</Button>
       </CardContent>
     </Card>
   );
@@ -66,7 +72,7 @@ function IntegrationList({ go }: { go: (page: Page, sub?: string) => void }) {
       ) : (
         <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {integrations.map((integration) => (
-            <IntegrationCard key={integration.type} integration={integration} onChanged={() => void refresh()} onOpen={() => go("integrations", integration.type)} />
+            <IntegrationCard key={integration.type} integration={integration} onOpen={() => go("integrations", integration.type)} />
           ))}
         </div>
       )}

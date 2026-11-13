@@ -28,6 +28,22 @@ function show(role: "admin" | "viewer", calls: string[] = []) {
 
 afterEach(cleanup);
 
+describe("IntegrationPage, the integration itself", () => {
+  it("shows its version, GitHub link and buttons, and the update badge", async () => {
+    const ext = { source: "github:drax98/tomtly-extensions/tuya@tuya-v1.2.4", id: "x", name: "X", version: "1.2.4", access: [], provides: ["devices"], running: true,
+      settings: [{ key: "hosts", label: "Hosts", type: "string", set: true }], marketUpdate: { version: "1.3.0" } } as unknown as Integration["extension"];
+    mockService({
+      "GET /api/integrations": () => ({ body: [{ ...integration, extension: ext }] }),
+      "POST /api/integrations/x/discover": () => ({ body: found }),
+    });
+    render(<WithRole role="admin"><ConfirmProvider><IntegrationPage id="x" back={vi.fn()} /></ConfirmProvider></WithRole>);
+    expect(await screen.findByText("1.2.4")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "GitHub" }).getAttribute("href")).toBe("https://github.com/drax98/tomtly-extensions/tree/tuya-v1.2.4/tuya");
+    expect(screen.getByText("Update 1.3.0")).toBeTruthy();
+    for (const name of ["Edit settings", "Upload new version", "Update from GitHub", "Remove"]) expect(screen.getByRole("button", { name: new RegExp(`^${name}$`) })).toBeTruthy();
+  });
+});
+
 describe("IntegrationPage", () => {
   it("scans when it's opened, and offers back only what was removed", async () => {
     const calls: string[] = [];

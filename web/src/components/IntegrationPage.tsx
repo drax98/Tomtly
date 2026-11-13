@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { ExtensionDetails, ExtensionState, UpdateBadge } from "@/components/ExtensionParts";
 import { PageHeader } from "@/components/PageHeader";
 import { useAuth } from "@/lib/auth";
 import { usePoll } from "@/lib/useDevices";
@@ -96,6 +97,22 @@ export function IntegrationPage({ id, back }: { id: string; back: () => void }) 
       <PageHeader title={title} description={integration?.description} />
       {integration === null ? <p className="text-sm text-muted-foreground">This integration isn't installed.</p> : (
         <div className="grid items-start gap-4 lg:grid-cols-2">
+          {integration.extension && (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-base font-medium">Integration</CardTitle>
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    <UpdateBadge extension={integration.extension} />
+                    <ExtensionState extension={integration.extension} />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ExtensionDetails extension={integration.extension} onRemoved={back} onApproved={() => void refresh()} onChanged={() => void refresh()} />
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader>
               <CardTitle className="text-base font-medium">Devices</CardTitle>

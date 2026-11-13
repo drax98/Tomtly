@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, type ExtensionStatus } from "@/api";
 import { WithRole } from "@/test/helpers";
 import { AddExtension, githubSource } from "./AddExtension";
-import { ExtensionDetails } from "./ExtensionParts";
+import { ExtensionDetails, githubUrl } from "./ExtensionParts";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -398,16 +398,28 @@ describe("ExtensionDetails, from the marketplace", () => {
   it("links back to the listing", () => {
     window.history.pushState(null, "", "/plugins");
     render(<WithRole role="viewer"><ExtensionDetails extension={added("market:tides@1.0.0#" + "a".repeat(64))} onRemoved={() => {}} /></WithRole>);
-    const link = screen.getByRole("link", { name: "See in the marketplace" });
+    const link = screen.getByRole("link", { name: "Marketplace" });
     expect(link.getAttribute("href")).toBe("/marketplace/tides");
     fireEvent.click(link);
     expect(window.location.pathname).toBe("/marketplace/tides");
   });
 
+  it("shows the version and links a GitHub source to its folder at that tag", () => {
+    render(<WithRole role="viewer"><ExtensionDetails extension={{ ...added("github:drax98/tomtly-extensions/tuya@tuya-v1.2.4"), version: "1.2.4" }} onRemoved={() => {}} /></WithRole>);
+    expect(screen.getByText("1.2.4")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "GitHub" }).getAttribute("href")).toBe("https://github.com/drax98/tomtly-extensions/tree/tuya-v1.2.4/tuya");
+  });
+
+  it("makes GitHub links only from github: sources", () => {
+    expect(githubUrl("github:a/b@v1")).toBe("https://github.com/a/b/tree/v1");
+    expect(githubUrl("github:a/b/x/y@main")).toBe("https://github.com/a/b/tree/main/x/y");
+    for (const source of ["upload:abc", "market:x@1#aa", "github:a@v1", "https://github.com/a/b"]) expect(githubUrl(source)).toBeUndefined();
+  });
+
   it("has no such link for anything else", () => {
     for (const source of ["github:a/b@v1", "upload:abc", "local/market:x@1"]) {
       render(<WithRole role="viewer"><ExtensionDetails extension={added(source)} onRemoved={() => {}} /></WithRole>);
-      expect(screen.queryByRole("link", { name: "See in the marketplace" })).toBeNull();
+      expect(screen.queryByRole("link", { name: "Marketplace" })).toBeNull();
       cleanup();
     }
   });
