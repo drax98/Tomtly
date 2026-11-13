@@ -244,6 +244,8 @@ describe("ExtensionDetails changes", () => {
     expect(await screen.findByText("big.json is over 1 MiB.")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Devices file"), { target: { files: [new File(['[{"key":"k"}]'], "tuya.json")] } });
     expect(await screen.findByText("tuya.json is read and will be kept encrypted.")).toBeTruthy();
+    expect(screen.getByText("tuya.json", { selector: "span" })).toBeTruthy();          // the chosen name beside the button
+    expect(screen.getByRole("button", { name: "Replace file" })).toBeTruthy();
     expect(screen.queryByText('[{"key":"k"}]')).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(update).toHaveBeenLastCalledWith("upload:abc", { city: "Warsaw", metric: true, devices: '[{"key":"k"}]' }));
