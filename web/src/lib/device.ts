@@ -100,7 +100,7 @@ export function display(dp: DataPoint, value: Value | null | undefined = dp.valu
 const MAX_TEXT = 48;
 
 /** Text a device sent: JSON as "key: value" pairs, and a long blob, like a Raw value's base64, cut short. */
-function displayText(text: string): string {
+export function displayText(text: string, max = MAX_TEXT): string {
   let shown = text;
   try {
     const parsed: unknown = JSON.parse(text);
@@ -110,7 +110,7 @@ function displayText(text: string): string {
   } catch {
     // not JSON
   }
-  return shown.length > MAX_TEXT ? `${shown.slice(0, MAX_TEXT)}…` : shown;
+  return shown.length > max ? `${shown.slice(0, max)}…` : shown;
 }
 
 // Values a person rarely wants on a card. They stay reachable under "More" and through the API.

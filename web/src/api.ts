@@ -315,6 +315,8 @@ export interface WidgetBlock {
   /** A schedule's rows, and which of them runs now. */
   periods?: { time?: string; temp?: number }[];
   now?: number;
+  /** A schedule's rows can be added and removed, up to this many. */
+  maxRows?: number;
 }
 
 /** A widget a script or an extension offers, as last drawn. */
@@ -328,6 +330,8 @@ export interface RenderedWidget {
   error?: string;
   /** A script in shadow mode: a button only logs what it would do. */
   practising?: boolean;
+  /** A device id: the widget shows on that device's page, and Home doesn't offer it. */
+  device?: string;
 }
 
 export interface Widgets {

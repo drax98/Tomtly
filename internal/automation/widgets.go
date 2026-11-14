@@ -16,19 +16,21 @@ const (
 	widgetEvery      = 5 * time.Second // how often a script's widgets are drawn again
 	maxScriptWidgets = 10
 	maxWidgetTitle   = 60
+	maxWidgetDevice  = 200
 )
 
 // scriptWidget is one widget a script made with home.widget. Its blocks are drawn on the engine's tick and kept, so
 // how many pages are open never decides how often script code runs.
 type scriptWidget struct {
 	key, title string
+	device     string // a device id: the widget shows on that device's page, and isn't offered for Home
 	render     goja.Callable
 	actions    map[string]goja.Callable
 	rendered   json.RawMessage
 	err        string
 }
 
-// defineWidget is home.widget(key, { title, render, actions }).
+// defineWidget is home.widget(key, { title, device, render, actions }).
 func (e *Engine) defineWidget(s *script, call goja.FunctionCall) {
 	key, _ := call.Argument(0).Export().(string)
 	if !widget.Name.MatchString(key) {
@@ -50,11 +52,15 @@ func (e *Engine) defineWidget(s *script, call goja.FunctionCall) {
 	if title == "" || utf8.RuneCountInString(title) > maxWidgetTitle {
 		panic(scriptError(s.vm, fmt.Sprintf("a widget needs a title of up to %d characters", maxWidgetTitle)))
 	}
+	dev, ok := widgetDevice(def.Get("device"))
+	if !ok {
+		panic(scriptError(s.vm, fmt.Sprintf("a widget's device is a device id of up to %d characters", maxWidgetDevice)))
+	}
 	render, ok := goja.AssertFunction(def.Get("render"))
 	if !ok {
 		panic(scriptError(s.vm, "a widget needs a render function"))
 	}
-	w := &scriptWidget{key: key, title: title, render: render, actions: map[string]goja.Callable{}}
+	w := &scriptWidget{key: key, title: title, device: dev, render: render, actions: map[string]goja.Callable{}}
 	if section, ok := def.Get("actions").(*goja.Object); ok {
 		for _, name := range section.Keys() {
 			fn, ok := goja.AssertFunction(section.Get(name))
@@ -65,6 +71,16 @@ func (e *Engine) defineWidget(s *script, call goja.FunctionCall) {
 		}
 	}
 	s.widgets = append(s.widgets, w)
+}
+
+// widgetDevice reads a widget's optional device: missing, or a string id.
+func widgetDevice(v goja.Value) (string, bool) {
+	raw := widget.Export(v)
+	if raw == nil {
+		return "", true
+	}
+	id, ok := raw.(string)
+	return id, ok && utf8.RuneCountInString(id) <= maxWidgetDevice
 }
 
 // renderWidgets draws a script's widgets again. A render that fails keeps its error on the widget, not in the log, so a
@@ -115,7 +131,7 @@ func (e *Engine) Widgets() []widget.Rendered {
 	out := []widget.Rendered{}
 	for _, s := range e.scripts {
 		for _, w := range s.widgets {
-			out = append(out, widget.Rendered{Key: "script:" + s.name + "/" + w.key, Title: w.title, From: s.name,
+			out = append(out, widget.Rendered{Key: "script:" + s.name + "/" + w.key, Title: w.title, From: s.name, Device: w.device,
 				Blocks: w.rendered, Error: w.err, Practising: !e.live[s.name]})
 		}
 	}

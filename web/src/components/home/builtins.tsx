@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 const LOW_BATTERY = 20;
 const RECENT_MS = 24 * 60 * 60 * 1000;
 
+export const WIDGETS_POLL_MS = 5_000; // scripts draw their widgets every 5 seconds
+
 /** Asks again every so often, and stops while signed out. A failure keeps the last answer. */
 export function usePoll<T>(load: (() => Promise<T>) | null, everyMs: number) {
   const [data, setData] = useState<T | null>(null);

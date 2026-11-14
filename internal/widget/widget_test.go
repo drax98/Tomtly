@@ -94,13 +94,13 @@ func TestDialogAndTimeRefuse(t *testing.T) {
 func TestScheduleAndChoice(t *testing.T) {
 	raw := `[{"type":"choice","name":"mode","label":"Mode","value":"Auto","options":["Auto","Manual"],"action":"mode","args":{"room":"Salon"}},` +
 		`{"type":"dialog","label":"Program","action":"save","blocks":[` +
-		`{"type":"schedule","name":"week","label":"Mon–Fri","now":1,"min":5,"max":30,"step":15,"unit":"°C","periods":[{"time":"06:00","temp":21},{"time":"22:00","temp":18},{}]},` +
+		`{"type":"schedule","name":"week","label":"Mon–Fri","now":1,"min":5,"max":30,"step":15,"unit":"°C","maxRows":12,"periods":[{"time":"06:00","temp":21},{"time":"22:00","temp":18},{}]},` +
 		`{"type":"choice","name":"fan","label":"Fan","options":["Low","High"],"action":"fan"}]}]`
 	out, err := Clean([]byte(raw))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(out), `"periods":[{"time":"06:00","temp":21},{"time":"22:00","temp":18},{}],"now":1`) {
+	if !strings.Contains(string(out), `"periods":[{"time":"06:00","temp":21},{"time":"22:00","temp":18},{}],"now":1,"maxRows":12`) {
 		t.Errorf("a schedule keeps its periods and now: %s", out)
 	}
 	if !HasAction(out, "mode") || !HasAction(out, "fan") || !HasAction(out, "save") || HasAction(out, "other") {
@@ -123,6 +123,9 @@ func TestScheduleAndChoiceRefuse(t *testing.T) {
 		"min is below its max":        inDialog(`{"type":"schedule","name":"w","label":"W","min":30,"max":5,"periods":[{}]}`),
 		"whole minutes":               inDialog(`{"type":"schedule","name":"w","label":"W","step":0,"periods":[{}]}`),
 		"now is the index":            inDialog(`{"type":"schedule","name":"w","label":"W","now":1,"periods":[{}]}`),
+		"maxRows is from":             inDialog(`{"type":"schedule","name":"w","label":"W","maxRows":1,"periods":[{},{}]}`),
+		"maxRows is from its":         inDialog(`{"type":"schedule","name":"w","label":"W","maxRows":13,"periods":[{}]}`),
+		"maxRows is from its number":  inDialog(`{"type":"schedule","name":"w","label":"W","maxRows":0,"periods":[{}]}`),
 		"a choice needs a label":      `[{"type":"choice","name":"m","options":["a","b"],"action":"m"}]`,
 		"a choice needs a name":       `[{"type":"choice","label":"M","options":["a","b"],"action":"m"}]`,
 		"2 to 4 options":              `[{"type":"choice","name":"m","label":"M","options":["a"],"action":"m"}]`,

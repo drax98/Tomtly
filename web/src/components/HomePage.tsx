@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WriteAccess, type Write } from "@/components/controls";
-import { BUILTINS, Go, usePoll, type HomeData } from "@/components/home/builtins";
+import { BUILTINS, Go, usePoll, WIDGETS_POLL_MS, type HomeData } from "@/components/home/builtins";
 import { WidgetBlocks } from "@/components/home/WidgetBlocks";
 import { useAuth } from "@/lib/auth";
 import { useDragOrder, type Drag } from "@/lib/useDragOrder";
@@ -16,7 +16,6 @@ import { cn, messageOf } from "@/lib/utils";
 
 export { problems, sortCleared, CLEARED_FOR_MS } from "@/components/home/builtins";
 
-const WIDGETS_POLL_MS = 5_000; // scripts draw their widgets every 5 seconds
 const STATUS_POLL_MS = 15_000; // extensions and automations change slowly; devices come live from the shell
 
 interface FrameProps {
@@ -61,8 +60,10 @@ function Frame({ title, icon, from, link, wide, editing, drag, onRemove, childre
 /** Every widget there is to place, grouped by where it comes from. Adding one puts it at the end of Home. */
 function Picker({ layout, catalogue, onAdd, onClose }: { layout: string[]; catalogue: RenderedWidget[]; onAdd: (key: string) => void; onClose: () => void }) {
   const { can } = useAuth();
-  const scripts = catalogue.filter((w) => w.key.startsWith("script:"));
-  const extensions = catalogue.filter((w) => w.key.startsWith("ext:"));
+  // A device's own widget lives on that device's page.
+  const offered = catalogue.filter((w) => !w.device);
+  const scripts = offered.filter((w) => w.key.startsWith("script:"));
+  const extensions = offered.filter((w) => w.key.startsWith("ext:"));
   const item = (key: string, title: string, detail: string) => {
     const added = layout.includes(key);
     return (

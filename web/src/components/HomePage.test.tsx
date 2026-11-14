@@ -100,6 +100,18 @@ describe("HomePage", () => {
     expect(await picker.findByRole("button", { name: "Weather now is on Home" })).toBeTruthy();
   });
 
+  it("doesn't offer a device's own widget, but still draws one already on Home", async () => {
+    const own: RenderedWidget = { ...weather, key: "script:heat/plug", title: "Plug program", from: "heat", device: "tuya:plug1" };
+    mockService({ "GET /api/widgets": () => ({ body: { layout: ["script:heat/plug"], widgets: [weather, own] } }) });
+    render(<WithRole role="operator"><HomePage devices={[]} rooms={{}} write={noop} /></WithRole>);
+    expect(await screen.findByTestId("widget-Plug program")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Home" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add widgets" }));
+    const picker = within(await screen.findByRole("dialog"));
+    expect(picker.getByRole("button", { name: "Add Weather now" })).toBeTruthy();
+    expect(picker.queryByText("Plug program")).toBeNull();
+  });
+
   it("tells a viewer someone else adds widgets", async () => {
     mockService({ "GET /api/widgets": () => ({ body: { layout: [], widgets: [] } }) });
     render(<WithRole role="viewer"><HomePage devices={[]} rooms={{}} write={noop} /></WithRole>);

@@ -154,8 +154,10 @@ there's more to change than fits, such as a week's heating program. `group` star
 under its `label`, so a widget about several things says which control is which. `sdk/home.d.ts` lists their fields.
 `choice` is a row of 2 to 4 options: picking one calls its `action` at once with only `{ [name]: option, ...args }`,
 and a dialog it sits in stays open. `schedule`, only in a dialog, is a day's program of up to 12 periods (a start and a
-whole temperature); Save sends every period, or `null` when all are empty, and adjacent schedules show as tabs.
-A script has up to 10 widgets of up to 40 blocks each, a group counting as one.
+whole temperature); Save sends every period, or `null` when all are empty, and adjacent schedules show as tabs. With
+`maxRows` someone can add and remove periods, up to that many.
+A script has up to 10 widgets of up to 40 blocks each, a group counting as one. A widget given `device: "tuya:abc"`
+shows on that device's page, after what it is, and isn't offered for Home.
 
 - `render` runs every 5 seconds and after a press. A render that fails shows its error on the widget, not in the log.
 - A press runs like the rest of the script. A practising script only logs what it would do, and the page says so.

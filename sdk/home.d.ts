@@ -103,9 +103,12 @@ type WidgetBlock =
    * A day's program, only in a dialog: up to 12 periods, each a start "HH:MM" and a whole temperature from min to max,
    * either left out while unknown. now is the index of the period running now. Save sends [{ time, temp }, ...] for
    * every period, or null when all are empty. Adjacent schedules show as tabs by label, opening on the one with now.
-   * Periods out of order are shown and must be fixed before Save, but only once someone edits that schedule.
+   * The page moves a period to its place by start as someone sets its time; two periods starting at the same time, or
+   * a program out of order as given, must be fixed before Save, but only once someone edits that schedule.
+   * With maxRows (up to 12, and at least as many as periods) someone can add and remove periods, so Save sends 1 to
+   * maxRows of them; without it the periods are fixed.
    */
-  | { type: "schedule"; name: string; label: string; periods: { time?: string; temp?: number }[]; now?: number; min?: number; max?: number; step?: number; unit?: string }
+  | { type: "schedule"; name: string; label: string; periods: { time?: string; temp?: number }[]; now?: number; min?: number; max?: number; step?: number; unit?: string; maxRows?: number }
   /**
    * A button labelled label that opens a form: title heads it, text explains it, and blocks are its fields (group, text,
    * rows, number, toggle, select, time, schedule and choice, up to 40). Save calls action with the form's values by
@@ -117,6 +120,8 @@ type WidgetBlock =
 interface WidgetDefinition {
   /** Up to 60 characters, shown on the widget and in the list of widgets to add. */
   title: string;
+  /** A device id, such as "tuya:abc": shows this widget on that device's page too; it isn't offered for Home. */
+  device?: string;
   /** Returns what the widget shows now, up to 40 blocks. Drawn again every 5 seconds and after a button is pressed. */
   render(): WidgetBlock[];
   /**

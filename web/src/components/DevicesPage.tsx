@@ -176,6 +176,7 @@ export function DevicesPage({ devices, rooms, reachable, write, onEdited }: Prop
       {openedDevice && (
         <DeviceDrawer
           device={openedDevice}
+          devices={devices ?? []}
           room={roomOf.get(openedDevice.id)}
           pinned={pins[openedDevice.id] ?? []}
           onPins={can("devices.write") ? (dps) => void changePins(openedDevice.id, dps) : undefined}

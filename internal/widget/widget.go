@@ -65,9 +65,10 @@ type Block struct {
 	// Title and Blocks belong to a dialog: its heading and the form it opens.
 	Title  string  `json:"title,omitempty"`
 	Blocks []Block `json:"blocks,omitempty"`
-	// Periods and Now belong to a schedule: its rows, and which of them runs now.
+	// Periods, Now and MaxRows belong to a schedule: its rows, which of them runs now, and how many the page may make.
 	Periods []Period `json:"periods,omitempty"`
 	Now     *int     `json:"now,omitempty"`
+	MaxRows *int     `json:"maxRows,omitempty"`
 }
 
 var tones = map[string]bool{"": true, "good": true, "warn": true, "bad": true}
@@ -218,6 +219,9 @@ func checkSchedule(b *Block) error {
 	if b.Now != nil && (*b.Now < 0 || *b.Now >= len(b.Periods)) {
 		return errors.New("a schedule's now is the index of one of its periods")
 	}
+	if b.MaxRows != nil && (*b.MaxRows < len(b.Periods) || *b.MaxRows > maxPeriods) {
+		return fmt.Errorf("a schedule's maxRows is from its number of periods to %d", maxPeriods)
+	}
 	return checkStep(b.Step)
 }
 
@@ -347,6 +351,8 @@ type Rendered struct {
 	From   string          `json:"from"`
 	Blocks json.RawMessage `json:"blocks,omitempty"`
 	Error  string          `json:"error,omitempty"`
+	// Device is a device id: the widget shows on that device's page, and Home doesn't offer it.
+	Device string `json:"device,omitempty"`
 	// Practising is a script in shadow mode: a click logs what it would do and changes nothing.
 	Practising bool `json:"practising,omitempty"`
 }

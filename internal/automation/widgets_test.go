@@ -96,6 +96,8 @@ func TestScriptWidgetMistakes(t *testing.T) {
 		`home.widget("a", { title: "A" })`:                                                                       "render function",
 		`home.widget("a", { title: "A", render: () => [] }); home.widget("a", { title: "B", render: () => [] })`: "already a widget",
 		`home.widget("a", { title: "A", render: () => [], actions: { go: 1 } })`:                                 "must be a function",
+		`home.widget("a", { title: "A", device: 7, render: () => [] })`:                                          "device is a device id",
+		`home.widget("a", { title: "A", device: "x".repeat(201), render: () => [] })`:                            "device is a device id",
 	} {
 		e, _ := harness(t, hub, source)
 		if st := e.Status(); len(st.Scripts) != 1 || !strings.Contains(st.Scripts[0].Error, want) {
@@ -115,6 +117,19 @@ home.widget("b", { title: "B", render: () => { throw new Error("boom") } });`)
 		if ev.Kind == "error" {
 			t.Errorf("a broken widget logged %q", ev.Message)
 		}
+	}
+}
+
+func TestScriptWidgetBelongsToADevice(t *testing.T) {
+	e, _ := harness(t, &fakeHub{}, `home.widget("a", { title: "A", device: "tuya:abc", render: () => [] });
+home.widget("b", { title: "B", render: () => [] });`)
+	e.Tick()
+	ws := e.Widgets()
+	if len(ws) != 2 || ws[0].Device != "tuya:abc" || ws[1].Device != "" {
+		t.Fatalf("widgets: %+v", ws)
+	}
+	if out, _ := json.Marshal(ws[1]); strings.Contains(string(out), "device") {
+		t.Errorf("a widget without a device doesn't say one: %s", out)
 	}
 }
 

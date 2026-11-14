@@ -228,3 +228,101 @@ describe("WidgetBlocks, schedule and choice", () => {
     expect(within(dialog).queryByRole("button", { name: "Cancel" })).toBeNull();
   });
 });
+
+describe("WidgetBlocks, a schedule's day bar and rows", () => {
+  it("a bar segment is a button that highlights its row, and a second press clears it", async () => {
+    const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+    const { dialog } = await open(program(schedule("week", "Mon–Fri", WEEK, 2)));
+    const bar = within(dialog).getByRole("group", { name: "The day's program" });
+    const night = within(bar).getByRole("button", { name: "17° from 22:00 to 06:00" });
+    // a native button, so Enter and Space press it and it takes focus in turn
+    expect(night.tagName).toBe("BUTTON");
+    expect(night.tabIndex).toBe(0);
+
+    fireEvent.click(night);
+    const row = within(dialog).getByRole("group", { name: "Period 4 of 4" });
+    expect(row.className).toContain("ring-primary");
+    expect(night.getAttribute("aria-pressed")).toBe("true");
+    expect(night.className).toContain("outline-background");
+    expect(scroll).toHaveBeenCalledWith({ block: "nearest", behavior: "smooth" });
+    expect(scroll.mock.contexts.at(-1)).toBe(row);
+
+    fireEvent.click(night);
+    expect(row.className).not.toContain("ring-primary");
+    expect(night.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("the piece before the first start selects the last period, and is announced only once", async () => {
+    const { dialog } = await open(program(schedule("week", "Mon–Fri", WEEK)));
+    const midnight = screen.getByTestId("day-bar").children[0] as HTMLElement;
+    expect(midnight.getAttribute("aria-hidden")).toBe("true");
+    expect(midnight.tabIndex).toBe(-1);
+    fireEvent.click(midnight);
+    expect(within(dialog).getByRole("group", { name: "Period 4 of 4" }).className).toContain("ring-primary");
+  });
+
+  const two = [{ time: "06:00", temp: 21 }, { time: "22:00", temp: 17 }];
+  const editable = (maxRows: number, periods = two): WidgetBlock => ({ ...schedule("week", "Every day", periods), maxRows });
+
+  it("without maxRows the rows are fixed", async () => {
+    const { dialog } = await open(program(schedule("week", "Every day", two)));
+    expect(within(dialog).queryByRole("button", { name: "Add period" })).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: /^Remove period/ })).toBeNull();
+  });
+
+  it("adds a period after the last, an hour later at the same temperature, up to maxRows, and Save sends them", async () => {
+    const calls = mockService({ [PRESS]: () => ({ body: { live: true } }) });
+    const { dialog } = await open(program(editable(3)));
+    const add = within(dialog).getByRole("button", { name: "Add period" });
+    fireEvent.click(add);
+    expect(within(dialog).getAllByRole("group", { name: /^Period \d of 3$/ })).toHaveLength(3);
+    expect(within(dialog).getByRole("combobox", { name: "Period 3 start, hour" }).textContent).toBe("23");
+    expect(within(dialog).getByRole("combobox", { name: "Period 3 temperature, °C" }).textContent).toBe("17°");
+    expect((add as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(calls.some((c) => c.key === PRESS)).toBe(true));
+    expect(calls.find((c) => c.key === PRESS)?.body).toEqual({ input: { week: [...two, { time: "23:00", temp: 17 }], room: "Salon" } });
+  });
+
+  it("adds after the selected period, and the selection clears when the rows change", async () => {
+    const { dialog } = await open(program(editable(4)));
+    fireEvent.click(within(dialog).getByRole("button", { name: "21° from 06:00 to 22:00" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Add period" }));
+    expect(within(dialog).getByRole("combobox", { name: "Period 2 start, hour" }).textContent).toBe("07");
+    expect(within(dialog).getByRole("combobox", { name: "Period 2 temperature, °C" }).textContent).toBe("21°");
+    expect(within(dialog).getByRole("combobox", { name: "Period 3 start, hour" }).textContent).toBe("22");
+    expect(within(dialog).getAllByRole("group", { name: /^Period \d of 3$/ }).some((g) => g.className.includes("ring-primary"))).toBe(false);
+  });
+
+  it("removes a period, but never the last one, and Save sends what's left", async () => {
+    const calls = mockService({ [PRESS]: () => ({ body: { live: true } }) });
+    const { dialog } = await open(program(editable(2)));
+    expect((within(dialog).getByRole("button", { name: "Add period" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Remove period 1" }));
+    expect(within(dialog).getAllByRole("group", { name: /^Period \d of 1$/ })).toHaveLength(1);
+    expect(within(dialog).queryByRole("button", { name: /^Remove period/ })).toBeNull();
+    expect((within(dialog).getByRole("button", { name: "Add period" }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(calls.some((c) => c.key === PRESS)).toBe(true));
+    expect(calls.find((c) => c.key === PRESS)?.body).toEqual({ input: { week: [{ time: "22:00", temp: 17 }], room: "Salon" } });
+  });
+
+  it("moves a row whose start is set out of order to its place, keeping it selected and focus on what was changed", async () => {
+    const { dialog } = await open(program(schedule("week", "Mon–Fri", WEEK, 3)));
+    fireEvent.click(within(dialog).getByRole("button", { name: "17° from 22:00 to 06:00" }));
+    await pick(within(dialog).getByRole("combobox", { name: "Period 4 start, hour" }), "05");
+    expect(within(dialog).getAllByRole("combobox", { name: /^Period \d start, hour$/ }).map((c) => c.textContent)).toEqual(["05", "06", "08", "16"]);
+    const first = within(dialog).getByRole("group", { name: "Period 1 of 4" });
+    expect(within(first).getByRole("combobox", { name: "Period 1 temperature, °C" }).textContent).toBe("17°");
+    expect(first.className).toContain("ring-primary");
+    expect(first.className).toContain("bg-primary/10"); // still the row running now
+    await waitFor(() => expect(document.activeElement).toBe(within(dialog).getByRole("combobox", { name: "Period 1 start, hour" })));
+  });
+
+  it("says when two periods start at the same time, on the second", async () => {
+    const { dialog } = await open(program(schedule("week", "Mon–Fri", WEEK)));
+    await pick(within(dialog).getByRole("combobox", { name: "Period 2 start, hour" }), "06");
+    expect(within(dialog).getByRole("alert").textContent).toBe("Two periods start at 06:00");
+    expect(within(dialog).getByRole("combobox", { name: "Period 2 start, hour" }).getAttribute("aria-invalid")).toBe("true");
+  });
+});

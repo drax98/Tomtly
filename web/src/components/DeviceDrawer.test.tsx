@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { DataPoint, Device } from "@/api";
+import type { DataPoint, Device, RenderedWidget } from "@/api";
 import { mockService, WithRole } from "@/test/helpers";
 import { DevicesPage } from "./DevicesPage";
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
 const dp = (n: string, code: string, value: boolean | number | string | null, over: Partial<DataPoint> = {}): DataPoint => ({
   dp: n, code, type: "Boolean", values: {}, scale: 0, writable: true, value, ...over,
@@ -133,5 +133,63 @@ describe("Device drawer", () => {
     const drawer = within(await screen.findByRole("dialog"));
     expect(drawer.queryByRole("button", { name: "Edit" })).toBeNull();
     expect(drawer.getByText("An administrator can rename it or move it to another room.")).toBeTruthy();
+  });
+  const own: RenderedWidget = { key: "script:heat/plug", title: "Mode and program", from: "heat", device: "tuya:plug1", blocks: [{ type: "text", text: "Runs the plug" }, { type: "button", label: "Boost", action: "boost" }] };
+  const other: RenderedWidget = { ...own, key: "script:heat/other", title: "Someone else's", device: "tuya:other" };
+  const withWidgets = (role: "operator" | "viewer") => {
+    const calls = mockService({ "GET /api/pins": () => ({ body: {} }), "GET /api/widgets": () => ({ body: { layout: [], widgets: [own, other] } }), "POST /api/widgets/script%3Aheat/plug/actions/boost": () => ({ body: { live: true } }) });
+    render(<WithRole role={role}><DevicesPage devices={[plug]} rooms={{}} reachable write={vi.fn()} /></WithRole>);
+    fireEvent.click(card());
+    return calls;
+  };
+
+  it("shows this device's widgets after what it is, and refreshes them after a press", async () => {
+    const calls = withWidgets("operator");
+    const drawer = within(await screen.findByRole("dialog", { name: "Desk plug" }));
+    const section = await drawer.findByRole("region", { name: "Mode and program" });
+    expect(within(section).getByText("Runs the plug")).toBeTruthy();
+    expect(drawer.queryByText("Someone else's")).toBeNull();
+    const headings = drawer.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(headings.slice(0, 3)).toEqual(["About it", "Mode and program", "Everything it reports"]);
+    const before = calls.filter((c) => c.key === "GET /api/widgets").length;
+    fireEvent.click(within(section).getByRole("button", { name: "Boost" }));
+    await waitFor(() => expect(calls.filter((c) => c.key === "GET /api/widgets").length).toBeGreaterThan(before));
+  });
+
+  it("opens a device widget's dialog over the drawer, and Cancel leaves the drawer open", async () => {
+    const program: RenderedWidget = { ...own, blocks: [{ type: "dialog", label: "Mode and program", action: "save", blocks: [{ type: "schedule", name: "week", label: "Every day", periods: [{ time: "06:00", temp: 21 }], maxRows: 6 }] }] };
+    mockService({ "GET /api/pins": () => ({ body: {} }), "GET /api/widgets": () => ({ body: { layout: [], widgets: [program] } }) });
+    render(<WithRole role="operator"><DevicesPage devices={[plug]} rooms={{}} reachable write={vi.fn()} /></WithRole>);
+    fireEvent.click(card());
+    const drawer = within(await screen.findByRole("dialog", { name: "Desk plug" }));
+    fireEvent.click(await drawer.findByRole("button", { name: "Mode and program" }));
+    const form = within(await screen.findByRole("dialog", { name: "Mode and program" }));
+    expect(form.getByRole("button", { name: "Add period" })).toBeTruthy();
+    fireEvent.click(form.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Mode and program" })).toBeNull());
+    expect(screen.getByRole("dialog", { name: "Desk plug" })).toBeTruthy();
+  });
+
+  it("shows a viewer a device's widget without its buttons", async () => {
+    withWidgets("viewer");
+    const drawer = within(await screen.findByRole("dialog", { name: "Desk plug" }));
+    const section = await drawer.findByRole("region", { name: "Mode and program" });
+    expect(within(section).queryByRole("button", { name: "Boost" })).toBeNull();
+  });
+
+  it("puts a long read-only text under its label, and keeps a short one beside it", async () => {
+    const program = "06:00 20°, 07:00 21°, 11:30 21°, 13:30 21°, 17:00 21°, 22:30 18°";
+    plug.dps!.push(dp("5", "program_workday", program, { type: "String", writable: false }), dp("6", "fw", "1.2.3", { type: "String", writable: false }));
+    try {
+      show();
+      fireEvent.click(card());
+      const drawer = within(await screen.findByRole("dialog", { name: "Desk plug" }));
+      const long = drawer.getByText(program);
+      expect(long.className).toContain("w-full");
+      expect(long.closest("li")?.textContent).toContain("program_workday");
+      expect(drawer.getByText("1.2.3").className).not.toContain("w-full");
+    } finally {
+      plug.dps!.splice(-2);
+    }
   });
 });

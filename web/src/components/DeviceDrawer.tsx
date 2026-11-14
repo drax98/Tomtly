@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 import { Copy, Pencil, Pin, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { api, type DataPoint, type Device } from "@/api";
@@ -10,14 +10,21 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { shownOnCard } from "@/components/cards";
 import { Control, type Write } from "@/components/controls";
-import { capitalize, findDp, label } from "@/lib/device";
+import { usePoll, WIDGETS_POLL_MS } from "@/components/home/builtins";
+import { WidgetBlocks } from "@/components/home/WidgetBlocks";
+import { useAuth } from "@/lib/auth";
+import { capitalize, displayText, findDp, label } from "@/lib/device";
 import { messageOf } from "@/lib/utils";
 import { ErrorText } from "@/components/PageHeader";
 
 export const MAX_PINS = 12; // the service refuses more
+const LONG_VALUE = 24; // a read-only text longer than this gets its own line, so it doesn't run into its label
+const MAX_LONG_TEXT = 500; // on its own line it can show whole, but a device's blob still mustn't flood the drawer
 
 interface Props {
   device: Device;
+  /** Every device, for the device blocks of this device's widgets. */
+  devices: Device[];
   room?: string;
   pinned: string[];
   /** Missing for people who can't change devices: they see the pins, but can't move them. */
@@ -96,8 +103,13 @@ function EditDevice({ device, room, rooms, onDone }: { device: Device; room?: st
   );
 }
 
-export function DeviceDrawer({ device, room, pinned, onPins, write, onClose, rooms = [], onEdited }: Props) {
+export function DeviceDrawer({ device, devices, room, pinned, onPins, write, onClose, rooms = [], onEdited }: Props) {
   const [editing, setEditing] = useState(false);
+  const { can } = useAuth();
+  const loadWidgets = useCallback(() => api.widgets(), []);
+  const [widgets, setWidgets] = usePoll(loadWidgets, WIDGETS_POLL_MS);
+  const ownWidgets = widgets?.widgets.filter((w) => w.device === device.id) ?? [];
+  const refresh = () => { void loadWidgets().then(setWidgets, () => {}); };
   const onCard = shownOnCard(device).map((d) => d.dp);
   const values = (device.dps ?? []).filter((d) => d.code !== "unavailable");
   const everyday = values.filter((d) => !d.advanced);
@@ -105,13 +117,14 @@ export function DeviceDrawer({ device, room, pinned, onPins, write, onClose, roo
   const valueRow = (d: DataPoint) => {
     const isPinned = pinned.includes(d.dp);
     const always = onCard.includes(d.dp);
+    const long = !d.writable && d.type === "String" && typeof d.value === "string" && d.value.length > LONG_VALUE;
     return (
       <li key={d.dp} className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 py-1.5 text-sm">
         <span className="min-w-0 flex-1">
           <span className="block">{label(d.code)}</span>
           <span className="block font-mono text-xs text-muted-foreground">{d.code}</span>
         </span>
-        <Control device={device} dp={d} write={write} />
+        {!long && <Control device={device} dp={d} write={write} />}
         {always ? (
           // Always shown, so it reads as pinned and can't be unpinned.
           <span role="img" aria-label="Always on the card" title="Always on the card" className="flex size-9 shrink-0 items-center justify-center text-muted-foreground">
@@ -130,6 +143,7 @@ export function DeviceDrawer({ device, room, pinned, onPins, write, onClose, roo
         ) : (
           <span className="w-9" />
         )}
+        {long && <span className="w-full break-words text-left text-xs text-muted-foreground tabular-nums">{displayText(d.value as string, MAX_LONG_TEXT)}</span>}
       </li>
     );
   };
@@ -188,6 +202,13 @@ export function DeviceDrawer({ device, room, pinned, onPins, write, onClose, roo
             </dl>
             {!onEdited && <p className="text-xs text-muted-foreground">An administrator can rename it or move it to another room.</p>}
           </section>
+
+          {ownWidgets.map((w) => (
+            <section key={w.key} aria-label={w.title} className="space-y-2">
+              <h3 className="text-sm font-semibold">{w.title}</h3>
+              <WidgetBlocks widget={w} devices={devices} write={write} onPressed={can("devices.write") ? refresh : undefined} />
+            </section>
+          ))}
 
           <section aria-labelledby="device-values" className="space-y-1">
             <h3 id="device-values" className="text-sm font-semibold">Everything it reports</h3>
