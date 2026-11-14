@@ -148,10 +148,13 @@ home.widget("heating", {
 The blocks are `text`, `stat`, `rows`, `device` (a device's value with its control; `min` and `max` narrow its slider to
 the range that matters, in the units shown), the inputs `number`, `toggle`, `select` and `time` (`"HH:MM"`, in `step`
 minutes), `button`, and `dialog`: a button that opens a form of its own `blocks` (inputs, text, rows and groups), whose
-**Save** calls its `action` with the form's values and its `args`, like a button; `columns: 2` pairs its inputs side
-by side. A dialog keeps a widget short when
+**Save** calls its `action` with the form's values and its `args`, like a button. A dialog with no inputs has only
+**Close**. A dialog keeps a widget short when
 there's more to change than fits, such as a week's heating program. `group` starts a titled section: the blocks after it, up to the next group, are drawn together
 under its `label`, so a widget about several things says which control is which. `sdk/home.d.ts` lists their fields.
+`choice` is a row of 2 to 4 options: picking one calls its `action` at once with only `{ [name]: option, ...args }`,
+and a dialog it sits in stays open. `schedule`, only in a dialog, is a day's program of up to 12 periods (a start and a
+whole temperature); Save sends every period, or `null` when all are empty, and adjacent schedules show as tabs.
 A script has up to 10 widgets of up to 40 blocks each, a group counting as one.
 
 - `render` runs every 5 seconds and after a press. A render that fails shows its error on the widget, not in the log.

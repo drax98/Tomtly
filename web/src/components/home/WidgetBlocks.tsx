@@ -1,4 +1,5 @@
-import { Fragment, useState, type FormEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useState, type FormEvent, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { api, type DataPoint, type Device, type RenderedWidget, type Value, type WidgetBlock, type WidgetTone } from "@/api";
 import { Button } from "@/components/ui/button";
@@ -7,10 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Control, type Write } from "@/components/controls";
 import { findDp, label as codeLabel } from "@/lib/device";
 import { cn, messageOf } from "@/lib/utils";
 import { ErrorText } from "@/components/PageHeader";
+import { blocking, Schedules, sentRows, startRows, withRuns, type Row } from "./Schedule";
+import { TimeSelects } from "./TimeSelects";
 
 const TONES: Record<WidgetTone, string> = { good: "text-good", warn: "text-warn", bad: "text-destructive" };
 const tone = (t?: WidgetTone) => (t ? TONES[t] : undefined);
@@ -18,8 +22,9 @@ const tone = (t?: WidgetTone) => (t ? TONES[t] : undefined);
 const shown = (v: Value | null | undefined) =>
   v === null || v === undefined ? "–" : typeof v === "boolean" ? (v ? "Yes" : "No") : typeof v === "number" ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : v;
 
-const CONTROLS = new Set(["number", "toggle", "select", "time", "button", "dialog"]);
-const INPUTS = new Set(["number", "toggle", "select", "time"]);
+const CONTROLS = new Set(["number", "toggle", "select", "time", "choice", "button", "dialog"]);
+// What a press collects. A choice isn't one: it sends only its own pick, the moment it's made.
+const INPUTS = new Set(["number", "toggle", "select", "time", "schedule"]);
 
 /** A device block's min and max, given in the units shown, narrow the device's own range: never past it. */
 function narrowed(dp: DataPoint, min?: number, max?: number): DataPoint {
@@ -53,21 +58,31 @@ function sections(blocks: WidgetBlock[]) {
 }
 
 /** What an input holds before anyone changes it. */
-const startValue = (b: WidgetBlock): unknown => (b.type === "select" ? (b.value ?? b.options?.[0]) : b.type === "toggle" ? (b.value ?? false) : (b.value ?? ""));
+function startValue(b: WidgetBlock): unknown {
+  if (b.type === "schedule") return startRows(b);
+  if (b.type === "select") return b.value ?? b.options?.[0];
+  if (b.type === "toggle") return b.value ?? false;
+  return b.value ?? "";
+}
+
+const sent = (b: WidgetBlock, v: unknown) => (b.type === "schedule" ? sentRows(v as Row[]) : v === "" ? null : v);
 
 /** The inputs among blocks by name, as an action gets them: an empty one is null. */
 function collect(blocks: WidgetBlock[], valueOf: (b: WidgetBlock) => unknown): Record<string, unknown> {
   const input: Record<string, unknown> = {};
-  for (const b of blocks) if (b.name && INPUTS.has(b.type)) input[b.name] = valueOf(b) === "" ? null : valueOf(b);
+  for (const b of blocks) if (b.name && INPUTS.has(b.type)) input[b.name] = sent(b, valueOf(b));
   return input;
 }
+
+const practising = (widget: RenderedWidget) =>
+  toast.info(`${widget.from} is practising`, { description: "It only logged what it would do. Switch it live on the Automations page to make it act." });
 
 /** Asks the widget's owner to run an action, and says how it went. Resolves to whether it ran. */
 async function press(widget: RenderedWidget, label: string, action: string, input: Record<string, unknown>): Promise<boolean> {
   try {
     const { live } = await api.pressWidget(widget.key, action, input);
     if (live) toast.success(`${label}: done`);
-    else toast.info(`${widget.from} is practising`, { description: "It only logged what it would do. Switch it live on the Automations page to make it act." });
+    else practising(widget);
     return true;
   } catch (e) {
     toast.error(`${label} didn't work`, { description: messageOf(e, "Try again.") });
@@ -97,7 +112,7 @@ function InputField({ b, id, value, onChange }: { b: WidgetBlock; id: string; va
       return (
         <div className="space-y-1.5">
           <Label htmlFor={id}>{b.label ?? b.name}</Label>
-          <Input id={id} type="time" step={(b.step ?? 1) * 60} className="min-h-11 w-32" value={String(value ?? "")} onChange={(e) => onChange(e.target.value)} />
+          <TimeSelects id={id} label={b.label ?? b.name!} step={b.step} value={value} onChange={onChange} />
         </div>
       );
     default:
@@ -113,25 +128,96 @@ function InputField({ b, id, value, onChange }: { b: WidgetBlock; id: string; va
   }
 }
 
+/**
+ * A choice: a segmented control whose pick runs its action at once with only that pick and its args. The pick shows
+ * busy until the widget draws it as the value, for up to 10 seconds.
+ */
+function Choice({ widget, b, onPressed }: { widget: RenderedWidget; b: WidgetBlock; onPressed?: () => void }) {
+  const [pending, setPending] = useState<string | null>(null);
+  const id = useId();
+  useEffect(() => {
+    if (pending === null) return;
+    if (pending === b.value) {
+      setPending(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      setPending(null);
+      toast.error(`${b.label} didn't change`, { description: "It wasn't confirmed within 10 seconds. Try again." });
+    }, 10_000);
+    return () => clearTimeout(t);
+  }, [pending, b.value, b.label]);
+  const value = pending ?? (typeof b.value === "string" ? b.value : "");
+
+  const pick = async (option: string) => {
+    if (!option || option === value) return; // Radix unpicks the picked option on a second press
+    setPending(option);
+    try {
+      const { live } = await api.pressWidget(widget.key, b.action!, { [b.name!]: option, ...b.args });
+      if (live) return onPressed?.();
+      setPending(null);
+      practising(widget);
+    } catch (e) {
+      setPending(null);
+      toast.error(`${b.label} didn't work`, { description: messageOf(e, "Try again.") });
+    }
+  };
+  return (
+    <div className="flex w-full flex-wrap items-center justify-between gap-3">
+      <span id={id} className="text-sm font-medium">{b.label}</span>
+      <ToggleGroup type="single" aria-labelledby={id} value={value} onValueChange={(o) => void pick(o)}>
+        {b.options?.map((o) => (
+          <ToggleGroupItem key={o} value={o} aria-busy={o === pending || undefined} className={cn(o === pending && "animate-pulse")}>{o}</ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </div>
+  );
+}
+
 /** A dialog block: a button that opens its form, whose Save runs its action with the form's values and its args. */
 function WidgetDialog({ widget, b, disabled, onPressed }: { widget: RenderedWidget; b: WidgetBlock; disabled: boolean; onPressed?: () => void }) {
   const [open, setOpen] = useState(false);
+  // Edits by name: they outlast a redraw while open, and only an edited schedule's problems block Save.
   const [values, setValues] = useState<Record<string, unknown>>({});
+  const [tabs, setTabs] = useState<Record<string, string>>({});
+  const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
   const form = b.blocks ?? [];
+  const prefix = `${widget.key}-${b.action}`;
+  const editable = form.some((i) => INPUTS.has(i.type));
   const valueOf = (i: WidgetBlock) => (i.name! in values ? values[i.name!] : startValue(i));
+  const rowsOf = (i: WidgetBlock) => valueOf(i) as Row[];
+  const change = (name: string, v: unknown) => setValues((now) => ({ ...now, [name]: v }));
   const show = (next: boolean) => {
-    if (next) setValues({}); // each opening starts from what the widget shows now
+    // each opening starts from what the widget shows now
+    if (next) {
+      setValues({});
+      setTabs({});
+      setTried(false);
+    }
     setOpen(next);
   };
   const save = async (e: FormEvent) => {
     e.preventDefault();
+    setTried(true);
+    const bad = blocking(form, rowsOf, (name) => name in values, prefix);
+    if (bad) {
+      flushSync(() => setTabs((now) => ({ ...now, [bad.run]: bad.name })));
+      document.getElementById(bad.focus)?.focus();
+      return;
+    }
     setBusy(true);
     const ran = await press(widget, b.label!, b.action!, { ...collect(form, valueOf), ...b.args });
     setBusy(false);
     if (!ran) return;
     setOpen(false);
     onPressed?.();
+  };
+  const field = (i: WidgetBlock, n: number) => {
+    if (i.type === "text") return <p key={n} className={cn("w-full text-sm", tone(i.tone))}>{i.text}</p>;
+    if (i.type === "rows") return <div key={n} className="w-full"><Rows rows={i.rows} /></div>;
+    if (i.type === "choice") return <Choice key={n} widget={widget} b={i} onPressed={onPressed} />;
+    return <InputField key={n} b={i} id={`${prefix}-${i.name}`} value={valueOf(i)} onChange={(v) => change(i.name!, v)} />;
   };
   return (
     <>
@@ -146,18 +232,25 @@ function WidgetDialog({ widget, b, disabled, onPressed }: { widget: RenderedWidg
             {sections(form).map((s, si) => (
               <section key={si} aria-label={s.title} className="space-y-2">
                 {s.title && <h3 className="text-sm font-medium">{s.title}</h3>}
-                <div className={cn("items-end gap-3", b.columns === 2 ? "grid grid-cols-2" : "flex flex-wrap")}>
-                  {s.blocks.map((i, n) => {
-                    if (i.type === "text") return <p key={n} className={cn("col-span-full w-full text-sm", tone(i.tone))}>{i.text}</p>;
-                    if (i.type === "rows") return <div key={n} className="col-span-full"><Rows rows={i.rows} /></div>;
-                    return <InputField key={n} b={i} id={`${widget.key}-${b.action}-${i.name}`} value={valueOf(i)} onChange={(v) => setValues((now) => ({ ...now, [i.name!]: v }))} />;
-                  })}
+                <div className="flex flex-wrap items-end gap-3">
+                  {withRuns(s.blocks).map((part, n) =>
+                    Array.isArray(part) ? (
+                      <Schedules key={n} run={part} prefix={prefix} rowsOf={rowsOf} onChange={change} tried={tried}
+                        tab={tabs[part[0].name!]} onTab={(t) => setTabs((now) => ({ ...now, [part[0].name!]: t }))} />
+                    ) : field(part, n),
+                  )}
                 </div>
               </section>
             ))}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => show(false)}>Cancel</Button>
-              <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
+              {editable ? (
+                <>
+                  <Button type="button" variant="outline" onClick={() => show(false)}>Cancel</Button>
+                  <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
+                </>
+              ) : (
+                <Button type="button" variant="outline" onClick={() => show(false)}>Close</Button>
+              )}
             </DialogFooter>
           </form>
         </DialogContent>
@@ -204,6 +297,7 @@ export function WidgetBlocks({ widget, devices, write, onPressed }: Props) {
 
   const control = (b: WidgetBlock, i: number): ReactNode => {
     if (INPUTS.has(b.type)) return <InputField key={i} b={b} id={`${widget.key}-${b.name ?? i}`} value={valueOf(b)} onChange={(v) => set(b.name!, v)} />;
+    if (b.type === "choice") return <Choice key={i} widget={widget} b={b} onPressed={onPressed} />;
     if (b.type === "dialog") return <WidgetDialog key={i} widget={widget} b={b} disabled={busy !== null} onPressed={onPressed} />;
     return (
       <Button key={i} className={cn("min-h-11", b.tone === "bad" && "bg-destructive text-destructive-foreground hover:bg-destructive/90")} disabled={busy !== null} onClick={() => void pressButton(b)}>

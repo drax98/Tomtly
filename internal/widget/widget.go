@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"unicode/utf8"
 
 	"github.com/dop251/goja"
@@ -17,6 +18,7 @@ const (
 	maxBlocks  = 40
 	maxRows    = 50
 	maxOptions = 50
+	maxPeriods = 12
 	maxText    = 1000
 	maxString  = 200
 	maxArgs    = 2048
@@ -34,6 +36,12 @@ type Row struct {
 	Label string          `json:"label"`
 	Value json.RawMessage `json:"value,omitempty"`
 	Tone  string          `json:"tone,omitempty"`
+}
+
+// Period is one row of a schedule: when it starts, "HH:MM", and the temperature it holds. Either may be unknown yet.
+type Period struct {
+	Time string   `json:"time,omitempty"`
+	Temp *float64 `json:"temp,omitempty"`
 }
 
 // Block is one piece of a widget. Which fields mean anything depends on Type; see sdk/home.d.ts.
@@ -57,8 +65,9 @@ type Block struct {
 	// Title and Blocks belong to a dialog: its heading and the form it opens.
 	Title  string  `json:"title,omitempty"`
 	Blocks []Block `json:"blocks,omitempty"`
-	// Columns is how many inputs a dialog's form lays side by side: 1, the default, or 2.
-	Columns int `json:"columns,omitempty"`
+	// Periods and Now belong to a schedule: its rows, and which of them runs now.
+	Periods []Period `json:"periods,omitempty"`
+	Now     *int     `json:"now,omitempty"`
 }
 
 var tones = map[string]bool{"": true, "good": true, "warn": true, "bad": true}
@@ -67,7 +76,7 @@ var tones = map[string]bool{"": true, "good": true, "warn": true, "bad": true}
 var clock = regexp.MustCompile(`^([01][0-9]|2[0-3]):[0-5][0-9]$`)
 
 // inDialog is what a dialog's form may hold: words and inputs, never a device, a button or another dialog.
-var inDialog = map[string]bool{"group": true, "text": true, "rows": true, "number": true, "toggle": true, "select": true, "time": true}
+var inDialog = map[string]bool{"group": true, "text": true, "rows": true, "number": true, "toggle": true, "select": true, "time": true, "schedule": true, "choice": true}
 
 // Clean checks what render returned, a list of blocks, and writes it again with only the fields the page knows.
 func Clean(raw []byte) (json.RawMessage, error) {
@@ -79,6 +88,9 @@ func Clean(raw []byte) (json.RawMessage, error) {
 		return nil, fmt.Errorf("render returned %d blocks, and a widget holds up to %d", len(blocks), maxBlocks)
 	}
 	for i := range blocks {
+		if blocks[i].Type == "schedule" {
+			return nil, fmt.Errorf("block %d: a schedule goes in a dialog", i+1)
+		}
 		if err := check(&blocks[i]); err != nil {
 			return nil, fmt.Errorf("block %d: %w", i+1, err)
 		}
@@ -155,21 +167,79 @@ func check(b *Block) error {
 				return fmt.Errorf("an option is up to %d characters", maxString)
 			}
 		}
+	case "schedule":
+		if err := checkSchedule(b); err != nil {
+			return err
+		}
+	case "choice":
+		if err := checkChoice(b); err != nil {
+			return err
+		}
 	case "button":
 		return checkPress(b, "a button")
 	case "dialog":
 		if err := checkPress(b, "a dialog"); err != nil {
 			return err
 		}
-		if b.Columns < 0 || b.Columns > 2 {
-			return errors.New("a dialog's columns is 1 or 2")
-		}
 		return checkForm(b.Blocks)
 	default:
-		return fmt.Errorf("unknown type %q: use group, text, stat, rows, device, number, toggle, select, time, button or dialog", b.Type)
+		return fmt.Errorf("unknown type %q: use group, text, stat, rows, device, number, toggle, select, time, schedule, choice, button or dialog", b.Type)
 	}
-	if len(b.Blocks) > 0 || b.Columns != 0 {
-		return errors.New("only a dialog holds blocks and columns")
+	if len(b.Blocks) > 0 {
+		return errors.New("only a dialog holds blocks")
+	}
+	return nil
+}
+
+// checkSchedule checks a day's program. It doesn't check the periods are in order: a device can hold a program out of
+// order, and refusing it would break the whole widget, so the page shows it and asks for a fix.
+func checkSchedule(b *Block) error {
+	if !Name.MatchString(b.Name) || b.Label == "" {
+		return errors.New("a schedule needs a name: letters, digits, - and _, starting with a letter, and a label")
+	}
+	if len(b.Periods) == 0 || len(b.Periods) > maxPeriods {
+		return fmt.Errorf("a schedule holds 1 to %d periods", maxPeriods)
+	}
+	ranged := b.Min != nil && b.Max != nil
+	if ranged && *b.Min >= *b.Max {
+		return errors.New("a schedule's min is below its max")
+	}
+	for i, p := range b.Periods {
+		if p.Time != "" && !clock.MatchString(p.Time) {
+			return fmt.Errorf(`period %d: a time is "HH:MM"`, i+1)
+		}
+		if p.Temp == nil {
+			continue
+		}
+		if *p.Temp != float64(int(*p.Temp)) || ranged && (*p.Temp < *b.Min || *p.Temp > *b.Max) {
+			return fmt.Errorf("period %d: a temperature is a whole number from min to max", i+1)
+		}
+	}
+	if b.Now != nil && (*b.Now < 0 || *b.Now >= len(b.Periods)) {
+		return errors.New("a schedule's now is the index of one of its periods")
+	}
+	return checkStep(b.Step)
+}
+
+// checkChoice checks a choice: a pressable with a name, and 2 to 4 options its value is one of.
+func checkChoice(b *Block) error {
+	if err := checkPress(b, "a choice"); err != nil {
+		return err
+	}
+	if !Name.MatchString(b.Name) {
+		return errors.New("a choice needs a name: letters, digits, - and _, starting with a letter")
+	}
+	if len(b.Options) < 2 || len(b.Options) > 4 {
+		return errors.New("a choice needs 2 to 4 options")
+	}
+	for _, o := range b.Options {
+		if utf8.RuneCountInString(o) > maxString {
+			return fmt.Errorf("an option is up to %d characters", maxString)
+		}
+	}
+	var value string
+	if len(b.Value) > 0 && (json.Unmarshal(b.Value, &value) != nil || !slices.Contains(b.Options, value)) {
+		return errors.New("a choice's value is one of its options")
 	}
 	return nil
 }
@@ -210,8 +280,13 @@ func checkTime(b *Block) error {
 	if len(b.Value) > 0 && (json.Unmarshal(b.Value, &value) != nil || !clock.MatchString(value)) {
 		return errors.New(`a time's value is "HH:MM"`)
 	}
-	if b.Step != nil && (*b.Step < 1 || *b.Step > 720 || *b.Step != float64(int(*b.Step))) {
-		return errors.New("a time's step is whole minutes, 1 to 720")
+	return checkStep(b.Step)
+}
+
+// checkStep checks a time's or a schedule's step: whole minutes.
+func checkStep(step *float64) error {
+	if step != nil && (*step < 1 || *step > 720 || *step != float64(int(*step))) {
+		return errors.New("a step is whole minutes, 1 to 720")
 	}
 	return nil
 }
@@ -221,15 +296,21 @@ func scalar(v json.RawMessage) bool {
 	return len(v) == 0 || (v[0] != '{' && v[0] != '[')
 }
 
-// HasAction says whether a button or a dialog in the rendered blocks asks for this action. A click may only ask for
-// what the widget shows, so a widget can't be used to reach an extension's other actions.
+// HasAction says whether a button, a dialog or a choice in the rendered blocks, or in a dialog's form, asks for this
+// action. A click may only ask for what the widget shows, so a widget can't be used to reach an extension's other actions.
 func HasAction(rendered json.RawMessage, action string) bool {
 	var blocks []Block
 	if json.Unmarshal(rendered, &blocks) != nil {
 		return false
 	}
+	return hasAction(blocks, action)
+}
+
+var presses = map[string]bool{"button": true, "dialog": true, "choice": true}
+
+func hasAction(blocks []Block, action string) bool {
 	for _, b := range blocks {
-		if (b.Type == "button" || b.Type == "dialog") && b.Action == action {
+		if (presses[b.Type] && b.Action == action) || hasAction(b.Blocks, action) {
 			return true
 		}
 	}

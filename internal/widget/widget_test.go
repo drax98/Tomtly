@@ -56,13 +56,13 @@ func TestCleanRefuses(t *testing.T) {
 }
 
 func TestDialogAndTime(t *testing.T) {
-	raw := `[{"type":"dialog","label":"Edit program","title":"Salon","action":"save","columns":2,"args":{"room":"Salon"},"blocks":[` +
+	raw := `[{"type":"dialog","label":"Edit program","title":"Salon","action":"save","args":{"room":"Salon"},"blocks":[` +
 		`{"type":"group","label":"Workdays"},{"type":"time","name":"w1","value":"06:30","step":15},{"type":"number","name":"t1","value":21}]}]`
 	out, err := Clean([]byte(raw))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(out), `"title":"Salon"`) || !strings.Contains(string(out), `"columns":2`) || !strings.Contains(string(out), `{"type":"time","value":"06:30","name":"w1","step":15}`) {
+	if !strings.Contains(string(out), `"title":"Salon"`) || !strings.Contains(string(out), `{"type":"time","value":"06:30","name":"w1","step":15}`) {
 		t.Errorf("a dialog keeps its title and form: %s", out)
 	}
 	if !HasAction(out, "save") {
@@ -82,10 +82,52 @@ func TestDialogAndTimeRefuse(t *testing.T) {
 		`can't hold a "device"`:     `[{"type":"dialog","label":"E","action":"save","blocks":[{"type":"device","device":"d","code":"c"}]}]`,
 		"dialog block 1: an input":  `[{"type":"dialog","label":"E","action":"save","blocks":[{"type":"number"}]}]`,
 		"only a dialog holds":       `[{"type":"text","text":"a","blocks":[{"type":"text","text":"b"}]}]`,
-		"columns is 1 or 2":         `[{"type":"dialog","label":"E","action":"save","columns":3,"blocks":[{"type":"text","text":"a"}]}]`,
-		"holds blocks and columns":  `[{"type":"text","text":"a","columns":2}]`,
 		`a time's value is "HH:MM"`: `[{"type":"time","name":"a","value":"24:00"}]`,
 		"whole minutes":             `[{"type":"time","name":"a","step":7.5}]`,
+	} {
+		if _, err := Clean([]byte(raw)); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%s: %v", want, err)
+		}
+	}
+}
+
+func TestScheduleAndChoice(t *testing.T) {
+	raw := `[{"type":"choice","name":"mode","label":"Mode","value":"Auto","options":["Auto","Manual"],"action":"mode","args":{"room":"Salon"}},` +
+		`{"type":"dialog","label":"Program","action":"save","blocks":[` +
+		`{"type":"schedule","name":"week","label":"Mon–Fri","now":1,"min":5,"max":30,"step":15,"unit":"°C","periods":[{"time":"06:00","temp":21},{"time":"22:00","temp":18},{}]},` +
+		`{"type":"choice","name":"fan","label":"Fan","options":["Low","High"],"action":"fan"}]}]`
+	out, err := Clean([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out), `"periods":[{"time":"06:00","temp":21},{"time":"22:00","temp":18},{}],"now":1`) {
+		t.Errorf("a schedule keeps its periods and now: %s", out)
+	}
+	if !HasAction(out, "mode") || !HasAction(out, "fan") || !HasAction(out, "save") || HasAction(out, "other") {
+		t.Error("HasAction finds a choice at the top and in a dialog")
+	}
+}
+
+func TestScheduleAndChoiceRefuse(t *testing.T) {
+	inDialog := func(b string) string { return `[{"type":"dialog","label":"E","action":"save","blocks":[` + b + `]}]` }
+	thirteen := strings.TrimSuffix(strings.Repeat(`{},`, 13), ",")
+	for want, raw := range map[string]string{
+		"goes in a dialog":            `[{"type":"schedule","name":"w","label":"W","periods":[{}]}]`,
+		"a schedule needs a name":     inDialog(`{"type":"schedule","name":"1w","label":"W","periods":[{}]}`),
+		"needs a name: letters":       inDialog(`{"type":"schedule","name":"w","periods":[{}]}`),
+		"holds 1 to 12 periods":       inDialog(`{"type":"schedule","name":"w","label":"W","periods":[` + thirteen + `]}`),
+		"schedule holds 1 to 12":      inDialog(`{"type":"schedule","name":"w","label":"W"}`),
+		`period 1: a time is "HH:MM"`: inDialog(`{"type":"schedule","name":"w","label":"W","periods":[{"time":"6:00"}]}`),
+		"period 2: a temperature":     inDialog(`{"type":"schedule","name":"w","label":"W","periods":[{},{"temp":20.5}]}`),
+		"period 1: a temperature is":  inDialog(`{"type":"schedule","name":"w","label":"W","min":5,"max":30,"periods":[{"temp":31}]}`),
+		"min is below its max":        inDialog(`{"type":"schedule","name":"w","label":"W","min":30,"max":5,"periods":[{}]}`),
+		"whole minutes":               inDialog(`{"type":"schedule","name":"w","label":"W","step":0,"periods":[{}]}`),
+		"now is the index":            inDialog(`{"type":"schedule","name":"w","label":"W","now":1,"periods":[{}]}`),
+		"a choice needs a label":      `[{"type":"choice","name":"m","options":["a","b"],"action":"m"}]`,
+		"a choice needs a name":       `[{"type":"choice","label":"M","options":["a","b"],"action":"m"}]`,
+		"2 to 4 options":              `[{"type":"choice","name":"m","label":"M","options":["a"],"action":"m"}]`,
+		"an option is up to":          `[{"type":"choice","name":"m","label":"M","options":["a","` + strings.Repeat("x", 201) + `"],"action":"m"}]`,
+		"value is one of":             `[{"type":"choice","name":"m","label":"M","value":"c","options":["a","b"],"action":"m"}]`,
 	} {
 		if _, err := Clean([]byte(raw)); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: %v", want, err)

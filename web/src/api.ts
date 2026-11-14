@@ -293,7 +293,7 @@ export type WidgetTone = "good" | "warn" | "bad";
 
 /** One piece of a widget, as sdk/home.d.ts describes it. What a field means depends on type. */
 export interface WidgetBlock {
-  type: "group" | "text" | "stat" | "rows" | "device" | "number" | "toggle" | "select" | "time" | "button" | "dialog";
+  type: "group" | "text" | "stat" | "rows" | "device" | "number" | "toggle" | "select" | "time" | "schedule" | "choice" | "button" | "dialog";
   label?: string;
   text?: string;
   value?: Value | null;
@@ -309,10 +309,12 @@ export interface WidgetBlock {
   options?: string[];
   action?: string;
   args?: Record<string, unknown>;
-  /** A dialog's heading, the form it opens, and how many inputs sit side by side in it. */
+  /** A dialog's heading and the form it opens. */
   title?: string;
   blocks?: WidgetBlock[];
-  columns?: number;
+  /** A schedule's rows, and which of them runs now. */
+  periods?: { time?: string; temp?: number }[];
+  now?: number;
 }
 
 /** A widget a script or an extension offers, as last drawn. */

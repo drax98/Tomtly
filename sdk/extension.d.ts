@@ -293,12 +293,25 @@ type WidgetBlock =
   | { type: "time"; name: string; label?: string; value?: string; step?: number }
   | { type: "button"; label: string; action: string; args?: Record<string, unknown>; tone?: WidgetTone }
   /**
-   * A button labelled label that opens a form: title heads it, text explains it, and blocks are its fields (group, text,
-   * rows, number, toggle, select and time, up to 40). Save calls action with the form's values by name, plus args, the
-   * way a button does; Cancel sends nothing. Each opening starts from the values render gives. columns: 2 lays the
-   * inputs side by side in pairs, such as a time and its temperature; text and rows always take the full width.
+   * A segmented control of 2 to 4 options. Picking one calls action at once with { [name]: option, ...args }, and
+   * nothing else: not the widget's inputs, nor a dialog's form, which stays open. The pick shows busy until render
+   * gives it as value, for up to 10 seconds.
    */
-  | { type: "dialog"; label: string; action: string; title?: string; text?: string; args?: Record<string, unknown>; blocks: WidgetBlock[]; columns?: 1 | 2 };
+  | { type: "choice"; name: string; label: string; value?: string; options: string[]; action: string; args?: Record<string, unknown> }
+  /**
+   * A day's program, only in a dialog: up to 12 periods, each a start "HH:MM" and a whole temperature from min to max,
+   * either left out while unknown. now is the index of the period running now. Save sends [{ time, temp }, ...] for
+   * every period, or null when all are empty. Adjacent schedules show as tabs by label, opening on the one with now.
+   * Periods out of order are shown and must be fixed before Save, but only once someone edits that schedule.
+   */
+  | { type: "schedule"; name: string; label: string; periods: { time?: string; temp?: number }[]; now?: number; min?: number; max?: number; step?: number; unit?: string }
+  /**
+   * A button labelled label that opens a form: title heads it, text explains it, and blocks are its fields (group, text,
+   * rows, number, toggle, select, time, schedule and choice, up to 40). Save calls action with the form's values by
+   * name, plus args, the way a button does; Cancel sends nothing. A form without inputs has only Close. Each opening
+   * starts from the values render gives, and edits outlast a redraw while it's open.
+   */
+  | { type: "dialog"; label: string; action: string; title?: string; text?: string; args?: Record<string, unknown>; blocks: WidgetBlock[] };
 
 type ExtensionLicense = "MIT" | "Apache-2.0" | "BSD-2-Clause" | "BSD-3-Clause" | "ISC" | "MPL-2.0" | "LGPL-2.1-only" | "LGPL-2.1-or-later"
   | "LGPL-3.0-only" | "LGPL-3.0-or-later" | "GPL-2.0-only" | "GPL-2.0-or-later" | "GPL-3.0-only" | "GPL-3.0-or-later" | "AGPL-3.0-only"
