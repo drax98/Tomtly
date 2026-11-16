@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/dop251/goja v0.0.0-20261031103838-cf2ff0ec0b31
 	github.com/evanw/esbuild v0.28.2
-	github.com/jackc/pgx/v5 v5.12.0
+	github.com/jackc/pgx/v5 v5.13.0
 	golang.org/x/crypto v0.58.0
 )
 
